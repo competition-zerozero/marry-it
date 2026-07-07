@@ -1,15 +1,41 @@
 const {useEffect, useMemo, useState} = React;
 
 const pages = [
-    {id: "dashboard", label: "Dashboard"},
-    {id: "customers", label: "Customers"},
-    {id: "vendors", label: "Vendors"},
-    {id: "schedules", label: "Schedule"},
-    {id: "agent", label: "Agent"}
+    {id: "dashboard", label: "홈"},
+    {id: "customers", label: "고객"},
+    {id: "vendors", label: "업체"},
+    {id: "schedules", label: "일정"},
+    {id: "agent", label: "AI 도우미"}
 ];
 
 const categories = ["WEDDING_HALL", "STUDIO", "DRESS", "MAKEUP", "FLOWER", "JEWELRY", "HANBOK", "RETURN_GIFT", "PHOTO", "VIDEO"];
 const scheduleTypes = ["CONSULTATION", "VENUE_TOUR", "DRESS_FITTING", "STUDIO_SHOOT", "MAKEUP", "WEDDING_DAY", "VENDOR_VISIT", "CONTRACT", "PERSONAL_TASK"];
+const labels = {
+    WEDDING_HALL: "웨딩홀",
+    STUDIO: "스튜디오",
+    DRESS: "드레스",
+    MAKEUP: "메이크업",
+    FLOWER: "플라워",
+    JEWELRY: "주얼리",
+    HANBOK: "한복",
+    RETURN_GIFT: "답례품",
+    PHOTO: "스냅",
+    VIDEO: "영상",
+    CUSTOMER: "고객",
+    VENDOR: "업체",
+    PLANNER: "플래너",
+    CONSULTATION: "상담",
+    VENUE_TOUR: "웨딩홀 투어",
+    DRESS_FITTING: "드레스 피팅",
+    STUDIO_SHOOT: "스튜디오 촬영",
+    WEDDING_DAY: "본식",
+    VENDOR_VISIT: "업체 방문",
+    CONTRACT: "계약",
+    PERSONAL_TASK: "개인 업무",
+    OWNER: "소유자",
+    ADMIN: "관리자",
+    MEMBER: "멤버"
+};
 
 async function api(path, options = {}) {
     const response = await fetch(path, {
@@ -24,7 +50,7 @@ async function api(path, options = {}) {
 }
 
 function label(value) {
-    return value ? value.replaceAll("_", " ").toLowerCase().replace(/\b\w/g, char => char.toUpperCase()) : "";
+    return labels[value] || value || "";
 }
 
 function toNumberOrNull(value) {
@@ -56,6 +82,9 @@ function App() {
     }, [me, workspaceId]);
 
     useEffect(() => {
+        if (new URLSearchParams(window.location.search).has("loginError")) {
+            setStatus("구글 로그인에 실패했습니다. 구글 클라우드 콘솔의 승인된 리디렉션 URI를 확인하세요.");
+        }
         loadMe();
     }, []);
 
@@ -65,18 +94,20 @@ function App() {
             const nextWorkspaceId = data.currentWorkspaceId || data.workspaces[0]?.workspaceId || "";
             setMe(data);
             setWorkspaceId(nextWorkspaceId);
-            setStatus(`로그인됨 · User #${data.userId}`);
+            setStatus(`로그인됨 · 사용자 #${data.userId}`);
             if (nextWorkspaceId) {
                 await refreshAll(nextWorkspaceId);
             }
         } catch (error) {
-            setStatus("로그인 전입니다. Google Login으로 시작하세요.");
+            if (!new URLSearchParams(window.location.search).has("loginError")) {
+                setStatus("로그인 전입니다. 구글 로그인으로 시작하세요.");
+            }
         }
     }
 
     async function refreshAll(id = workspaceId) {
         if (!id) {
-            setStatus("Workspace ID가 필요합니다.");
+            setStatus("워크스페이스 ID가 필요합니다.");
             return;
         }
         setBusy(true);
@@ -89,7 +120,7 @@ function App() {
             setCustomers(customerData);
             setVendors(vendorData);
             setSchedules(scheduleData);
-            setStatus(`Workspace ${id} 정보를 불러왔습니다.`);
+            setStatus(`워크스페이스 ${id} 정보를 불러왔습니다.`);
         } catch (error) {
             setStatus(error.message);
         } finally {
@@ -99,7 +130,7 @@ function App() {
 
     async function submit(path, payload, form, after) {
         if (!workspaceId) {
-            setStatus("Workspace ID가 필요합니다.");
+            setStatus("워크스페이스 ID가 필요합니다.");
             return;
         }
         setBusy(true);
@@ -150,7 +181,7 @@ function App() {
         data.includeExternalSearch = form.includeExternalSearch.checked;
         await submit(`/api/workspaces/${workspaceId}/agent`, data, null, result => {
             setAgentResult(result);
-            setStatus("Agent 응답을 받았습니다.");
+            setStatus("AI 도우미 응답을 받았습니다.");
         });
     }
 
@@ -175,7 +206,7 @@ function Sidebar({activePage, setActivePage, status}) {
             h("span", {className: "brand-mark"}, "m"),
             h("div", null,
                 h("strong", null, "marry-it"),
-                h("small", null, "Planner Workspace")
+            h("small", null, "웨딩 워크스페이스")
             )
         ),
         h("nav", {className: "side-nav"},
@@ -186,24 +217,24 @@ function Sidebar({activePage, setActivePage, status}) {
             }, page.label))
         ),
         h("div", {className: "side-status"},
-            h("span", null, "Status"),
+            h("span", null, "상태"),
             h("p", null, status)
         ),
-        h("a", {className: "google-button", href: "/oauth2/authorization/google"}, "Google Login"),
-        h("a", {className: "logout-link", href: "/logout"}, "Logout")
+        h("a", {className: "google-button", href: "/oauth2/authorization/google"}, "구글 로그인"),
+        h("a", {className: "logout-link", href: "/logout"}, "로그아웃")
     );
 }
 
 function TopBar({workspaceId, setWorkspaceId, refreshAll, busy, workspace, redirectUri}) {
     return h("header", {className: "topbar"},
         h("div", null,
-            h("span", {className: "eyebrow"}, "Active Workspace"),
-            h("h1", null, workspace?.workspaceName || "Wedding Workspace"),
-            h("p", null, `Google Redirect URI · ${redirectUri}`)
+            h("span", {className: "eyebrow"}, "현재 워크스페이스"),
+            h("h1", null, workspace?.workspaceName || "웨딩 워크스페이스"),
+            h("p", null, `구글 승인 리디렉션 URI · ${redirectUri}`)
         ),
         h("div", {className: "workspace-control"},
             h("label", null,
-                "Workspace ID",
+                "워크스페이스 ID",
                 h("input", {
                     value: workspaceId,
                     onChange: event => setWorkspaceId(event.target.value),
@@ -212,7 +243,7 @@ function TopBar({workspaceId, setWorkspaceId, refreshAll, busy, workspace, redir
                     placeholder: "로그인 후 자동 입력"
                 })
             ),
-            h("button", {className: "dark-button", onClick: () => refreshAll(), disabled: busy}, busy ? "Loading" : "Refresh")
+            h("button", {className: "dark-button", onClick: () => refreshAll(), disabled: busy}, busy ? "불러오는 중" : "새로고침")
         )
     );
 }
@@ -224,24 +255,24 @@ function DashboardPage({customers, vendors, schedules, workspace, setActivePage}
 
     return h("section", {className: "page-stack"},
         h("div", {className: "metrics"},
-            h(Metric, {tone: "rose", label: "Customers", value: customers.length, onClick: () => setActivePage("customers")}),
-            h(Metric, {tone: "mint", label: "Vendors", value: vendors.length, onClick: () => setActivePage("vendors")}),
-            h(Metric, {tone: "sky", label: "Schedules", value: schedules.length, onClick: () => setActivePage("schedules")}),
-            h(Metric, {tone: "lavender", label: "Workspace", value: workspace?.role || "-"})
+            h(Metric, {tone: "rose", label: "등록 고객", value: customers.length, onClick: () => setActivePage("customers")}),
+            h(Metric, {tone: "mint", label: "등록 업체", value: vendors.length, onClick: () => setActivePage("vendors")}),
+            h(Metric, {tone: "sky", label: "예정 일정", value: schedules.length, onClick: () => setActivePage("schedules")}),
+            h(Metric, {tone: "lavender", label: "내 권한", value: workspace?.role || "-"})
         ),
         h("div", {className: "content-grid"},
-            h(Panel, {title: "등록된 고객", action: "View all", onAction: () => setActivePage("customers")},
+            h(Panel, {title: "최근 등록 고객", action: "전체 보기", onAction: () => setActivePage("customers")},
                 h(CustomerTable, {customers: recentCustomers})
             ),
-            h(Panel, {title: "등록된 업체", action: "View all", onAction: () => setActivePage("vendors")},
+            h(Panel, {title: "최근 등록 업체", action: "전체 보기", onAction: () => setActivePage("vendors")},
                 h(VendorCards, {vendors: recentVendors})
             ),
-            h(Panel, {title: "다가오는 일정", action: "View all", onAction: () => setActivePage("schedules")},
+            h(Panel, {title: "다가오는 일정", action: "전체 보기", onAction: () => setActivePage("schedules")},
                 h(ScheduleCards, {schedules: nextSchedules})
             ),
-            h(Panel, {title: "업무 지원", action: "Ask", onAction: () => setActivePage("agent")},
+            h(Panel, {title: "업무 지원", action: "요청하기", onAction: () => setActivePage("agent")},
                 h("div", {className: "assistant-preview"},
-                    h("strong", null, "Agent는 Workspace 등록 업체를 먼저 확인합니다."),
+                    h("strong", null, "AI 도우미는 워크스페이스 등록 업체를 먼저 확인합니다."),
                     h("p", null, "기존 거래처가 없을 때만 카카오맵 외부 후보를 분리해서 보여줍니다.")
                 )
             )
@@ -250,38 +281,62 @@ function DashboardPage({customers, vendors, schedules, workspace, setActivePage}
 }
 
 function CustomersPage({customers, onSubmit}) {
+    const [query, setQuery] = useState("");
+    const filteredCustomers = customers.filter(customer => [customer.groomName, customer.brideName, customer.plannerName, customer.preferredWeddingArea]
+            .filter(Boolean)
+            .some(value => value.includes(query)));
+
     return h("section", {className: "page-stack"},
-        h(PageTitle, {eyebrow: "CRM", title: "고객 관리", description: "커플 정보, 담당자명, 예산, 선호 조건을 Workspace 단위로 관리합니다."}),
+        h(PageTitle, {eyebrow: "고객 관리", title: "고객과 담당 플래너를 함께 확인하세요", description: "커플 정보, 담당자명, 예산, 선호 조건을 워크스페이스 단위로 관리합니다."}),
         h("div", {className: "split-page"},
             h(Panel, {title: "고객 등록"}, h(CustomerForm, {onSubmit})),
-            h(Panel, {title: "고객 목록", action: `${customers.length}명`}, h(CustomerTable, {customers}))
+            h(Panel, {title: "고객 목록", action: `${filteredCustomers.length}명`},
+                h(SearchBox, {value: query, onChange: setQuery, placeholder: "고객명, 담당자명, 지역 검색"}),
+                h(CustomerTable, {customers: filteredCustomers})
+            )
         )
     );
 }
 
 function VendorsPage({vendors, onSubmit}) {
+    const [query, setQuery] = useState("");
+    const filteredVendors = vendors.filter(vendor => [vendor.name, vendor.category, vendor.roadAddress, vendor.contactPerson]
+            .filter(Boolean)
+            .some(value => value.includes(query)));
+
     return h("section", {className: "page-stack"},
-        h(PageTitle, {eyebrow: "Partners", title: "업체 관리", description: "Workspace에 등록한 업체와 카카오 장소 정보를 한 곳에서 확인합니다."}),
+        h(PageTitle, {eyebrow: "업체 관리", title: "등록 업체와 제휴 상태를 관리하세요", description: "워크스페이스에 등록한 업체, 카카오 장소 ID, 담당자, 주소를 한 곳에서 확인합니다."}),
         h("div", {className: "split-page"},
             h(Panel, {title: "업체 등록"}, h(VendorForm, {onSubmit})),
-            h(Panel, {title: "업체 목록", action: `${vendors.length}개`}, h(VendorCards, {vendors}))
+            h(Panel, {title: "업체 목록", action: `${filteredVendors.length}개`},
+                h(SearchBox, {value: query, onChange: setQuery, placeholder: "업체명, 카테고리, 주소, 담당자 검색"}),
+                h(VendorCards, {vendors: filteredVendors})
+            )
         )
     );
 }
 
 function SchedulesPage({schedules, onSubmit}) {
+    const [query, setQuery] = useState("");
+    const filteredSchedules = schedules.filter(schedule => [schedule.title, schedule.scheduleType, schedule.targetType, schedule.location]
+            .filter(Boolean)
+            .some(value => value.includes(query)));
+
     return h("section", {className: "page-stack"},
-        h(PageTitle, {eyebrow: "Calendar", title: "일정 관리", description: "고객, 업체, 플래너 일정을 분리하고 같은 대상의 시간 충돌을 막습니다."}),
+        h(PageTitle, {eyebrow: "일정 관리", title: "고객·업체·플래너 일정을 분리해서 확인하세요", description: "같은 대상의 일정 시간이 겹치지 않도록 서버에서 충돌을 검증합니다."}),
         h("div", {className: "split-page"},
             h(Panel, {title: "일정 등록"}, h(ScheduleForm, {onSubmit})),
-            h(Panel, {title: "일정 목록", action: `${schedules.length}건`}, h(ScheduleCards, {schedules}))
+            h(Panel, {title: "일정 목록", action: `${filteredSchedules.length}건`},
+                h(SearchBox, {value: query, onChange: setQuery, placeholder: "일정명, 유형, 장소 검색"}),
+                h(ScheduleCards, {schedules: filteredSchedules})
+            )
         )
     );
 }
 
 function AgentPage({onSubmit, result}) {
     return h("section", {className: "page-stack"},
-        h(PageTitle, {eyebrow: "Assistant", title: "AI Agent", description: "현재 Workspace 데이터와 외부 후보를 구분해서 추천 결과를 반환합니다."}),
+        h(PageTitle, {eyebrow: "AI 도우미", title: "기존 거래처와 외부 후보를 구분해 추천합니다", description: "현재 워크스페이스 데이터와 카카오맵 외부 후보를 분리해서 보여줍니다."}),
         h("div", {className: "split-page"},
             h(Panel, {title: "요청 작성"}, h(AgentForm, {onSubmit})),
             h(Panel, {title: "응답"}, h(AgentResult, {result}))
@@ -294,6 +349,12 @@ function PageTitle({eyebrow, title, description}) {
         h("span", {className: "eyebrow"}, eyebrow),
         h("h2", null, title),
         h("p", null, description)
+    );
+}
+
+function SearchBox({value, onChange, placeholder}) {
+    return h("div", {className: "search-box"},
+        h("input", {value, onChange: event => onChange(event.target.value), placeholder})
     );
 }
 
@@ -328,7 +389,7 @@ function CustomerForm({onSubmit}) {
 
 function VendorForm({onSubmit}) {
     return h("form", {className: "form", onSubmit},
-        h("div", {className: "form-row"}, h("input", {name: "kakaoPlaceId", placeholder: "Kakao Place ID", required: true}), h("input", {name: "name", placeholder: "업체명", required: true})),
+        h("div", {className: "form-row"}, h("input", {name: "kakaoPlaceId", placeholder: "카카오 장소 ID", required: true}), h("input", {name: "name", placeholder: "업체명", required: true})),
         h("select", {name: "category", required: true}, categories.map(category => h("option", {key: category, value: category}, label(category)))),
         h("input", {name: "roadAddress", placeholder: "도로명 주소"}),
         h("div", {className: "form-row"}, h("input", {name: "phone", placeholder: "전화번호"}), h("input", {name: "contactPerson", placeholder: "담당자"})),
@@ -354,7 +415,7 @@ function AgentForm({onSubmit}) {
         h("select", {name: "vendorCategory"}, h("option", {value: ""}, "카테고리 선택"), categories.map(category => h("option", {key: category, value: category}, label(category)))),
         h("input", {name: "areaKeyword", placeholder: "지역 키워드"}),
         h("label", {className: "toggle"}, h("input", {name: "includeExternalSearch", type: "checkbox"}), h("span", null, "기존 업체가 없으면 카카오 외부 후보 검색")),
-        h("button", {className: "submit-button"}, "Agent 요청")
+        h("button", {className: "submit-button"}, "AI 도우미에게 요청")
     );
 }
 
@@ -373,10 +434,10 @@ function CustomerTable({customers}) {
 function VendorCards({vendors}) {
     if (vendors.length === 0) return h(Empty, {message: "등록된 업체가 없습니다."});
     return h("div", {className: "cards"}, vendors.map(vendor => h("div", {className: "data-card", key: vendor.id},
-        h("div", {className: "card-title"}, h("strong", null, vendor.name), h("em", null, vendor.partnered ? "Partnered" : "External")),
+        h("div", {className: "card-title"}, h("strong", null, vendor.name), h("em", null, vendor.partnered ? "제휴" : "일반")),
         h("span", null, label(vendor.category)),
         h("span", null, vendor.roadAddress || vendor.address || "주소 미입력"),
-        h("span", null, `Kakao Place ${vendor.kakaoPlaceId}`)
+        h("span", null, `카카오 장소 ID ${vendor.kakaoPlaceId}`)
     )));
 }
 
@@ -391,7 +452,7 @@ function ScheduleCards({schedules}) {
 }
 
 function AgentResult({result}) {
-    if (!result) return h("div", {className: "empty"}, "Agent 응답이 여기에 표시됩니다.");
+    if (!result) return h("div", {className: "empty"}, "AI 도우미 응답이 여기에 표시됩니다.");
     return h("div", {className: "agent-result"},
         h("p", null, result.answer),
         h("pre", null, JSON.stringify(result.vendorRecommendation, null, 2))
