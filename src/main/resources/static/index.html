@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>marry-it Planner Console</title>
+    <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+<header class="topbar">
+    <div>
+        <h1>marry-it</h1>
+        <p>Workspace CRM, vendor management, scheduling, and agent support for wedding planners.</p>
+    </div>
+    <nav>
+        <a class="button secondary" href="/oauth2/authorization/google">Google Login</a>
+        <a class="button ghost" href="/logout">Logout</a>
+    </nav>
+</header>
+
+<main class="layout">
+    <section class="panel status-panel">
+        <div>
+            <h2>Workspace</h2>
+            <p id="sessionStatus">Checking login session...</p>
+        </div>
+        <label>
+            Workspace ID
+            <input id="workspaceId" type="number" min="1" placeholder="Login or enter workspace id">
+        </label>
+        <button id="refreshAll" class="button">Refresh Data</button>
+    </section>
+
+    <section class="grid">
+        <article class="panel">
+            <h2>Customers</h2>
+            <form id="customerForm" class="stack">
+                <input name="groomName" placeholder="Groom name" required>
+                <input name="brideName" placeholder="Bride name" required>
+                <input name="phoneNumber" placeholder="Phone">
+                <input name="residenceArea" placeholder="Residence area">
+                <input name="weddingDate" type="date">
+                <input name="preferredWeddingArea" placeholder="Preferred wedding area">
+                <input name="expectedGuestCount" type="number" min="0" placeholder="Expected guests">
+                <input name="totalBudget" type="number" min="0" placeholder="Total budget">
+                <textarea name="preferredAtmosphere" placeholder="Preferred atmosphere"></textarea>
+                <textarea name="importantConditions" placeholder="Important conditions"></textarea>
+                <textarea name="avoidConditions" placeholder="Avoid conditions"></textarea>
+                <button class="button" type="submit">Add Customer</button>
+            </form>
+            <div id="customers" class="list"></div>
+        </article>
+
+        <article class="panel">
+            <h2>Vendors</h2>
+            <form id="vendorForm" class="stack">
+                <input name="kakaoPlaceId" placeholder="Kakao place id" required>
+                <input name="name" placeholder="Vendor name" required>
+                <select name="category" required>
+                    <option value="WEDDING_HALL">Wedding hall</option>
+                    <option value="STUDIO">Studio</option>
+                    <option value="DRESS">Dress</option>
+                    <option value="MAKEUP">Makeup</option>
+                    <option value="FLOWER">Flower</option>
+                    <option value="JEWELRY">Jewelry</option>
+                    <option value="HANBOK">Hanbok</option>
+                    <option value="RETURN_GIFT">Return gift</option>
+                    <option value="PHOTO">Photo</option>
+                    <option value="VIDEO">Video</option>
+                </select>
+                <input name="roadAddress" placeholder="Road address">
+                <input name="phone" placeholder="Phone">
+                <input name="contactPerson" placeholder="Contact person">
+                <label class="inline"><input name="partnered" type="checkbox"> Partnered</label>
+                <button class="button" type="submit">Add Vendor</button>
+            </form>
+            <div id="vendors" class="list"></div>
+        </article>
+
+        <article class="panel">
+            <h2>Schedule</h2>
+            <form id="scheduleForm" class="stack">
+                <select name="targetType">
+                    <option value="CUSTOMER">Customer</option>
+                    <option value="VENDOR">Vendor</option>
+                    <option value="PLANNER">Planner</option>
+                </select>
+                <input name="targetId" type="number" min="1" placeholder="Target id" required>
+                <select name="scheduleType">
+                    <option value="CONSULTATION">Consultation</option>
+                    <option value="VENUE_TOUR">Venue tour</option>
+                    <option value="DRESS_FITTING">Dress fitting</option>
+                    <option value="STUDIO_SHOOT">Studio shoot</option>
+                    <option value="MAKEUP">Makeup</option>
+                    <option value="WEDDING_DAY">Wedding day</option>
+                    <option value="VENDOR_VISIT">Vendor visit</option>
+                    <option value="CONTRACT">Contract</option>
+                    <option value="PERSONAL_TASK">Personal task</option>
+                </select>
+                <input name="title" placeholder="Title" required>
+                <input name="startsAt" type="datetime-local" required>
+                <input name="endsAt" type="datetime-local" required>
+                <input name="location" placeholder="Location">
+                <button class="button" type="submit">Add Schedule</button>
+            </form>
+            <div id="schedules" class="list"></div>
+        </article>
+
+        <article class="panel">
+            <h2>Agent</h2>
+            <form id="agentForm" class="stack">
+                <textarea name="message" placeholder="Ask for vendor recommendations or emergency alternatives" required></textarea>
+                <select name="vendorCategory">
+                    <option value="">No category</option>
+                    <option value="WEDDING_HALL">Wedding hall</option>
+                    <option value="FLOWER">Flower</option>
+                    <option value="DRESS">Dress</option>
+                    <option value="MAKEUP">Makeup</option>
+                    <option value="STUDIO">Studio</option>
+                </select>
+                <input name="areaKeyword" placeholder="Area keyword">
+                <label class="inline"><input name="includeExternalSearch" type="checkbox"> Search Kakao if no workspace vendor exists</label>
+                <button class="button" type="submit">Ask Agent</button>
+            </form>
+            <pre id="agentResult" class="result"></pre>
+        </article>
+    </section>
+</main>
+
+<script src="/app.js"></script>
+</body>
+</html>
