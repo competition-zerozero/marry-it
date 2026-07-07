@@ -28,7 +28,10 @@ public class SecurityConfig {
                 .headers(headers -> headers.frameOptions(Customizer.withDefaults()));
 
         if (clientRegistrationRepository.getIfAvailable() != null) {
-            http.oauth2Login(oauth2 -> oauth2.successHandler(oauth2LoginSuccessHandler));
+            http.oauth2Login(oauth2 -> oauth2
+                    .successHandler(oauth2LoginSuccessHandler)
+                    .failureUrl("/?loginError=true")
+            );
         }
 
         return http.build();
