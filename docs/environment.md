@@ -28,3 +28,22 @@ OPENAI_API_KEY=
 ```
 
 Spring configuration can be supplied through environment variables or an ignored local file such as `src/main/resources/application-local.properties`.
+
+Local development uses the `local` profile by default when running:
+
+```text
+./gradlew bootRun
+```
+
+If you override boot arguments, include the profile explicitly:
+
+```text
+./gradlew bootRun --args='--spring.profiles.active=local --server.port=8081'
+```
+
+Google redirect URIs must match the host and port used in the browser. For example:
+
+```text
+http://localhost:8080/login/oauth2/code/google
+http://127.0.0.1:8081/login/oauth2/code/google
+```
