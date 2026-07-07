@@ -181,11 +181,9 @@ button {
     line-height: 1.55;
 }
 
-.workspace-control {
-    display: grid;
-    grid-template-columns: 1fr auto;
-    gap: 10px;
-    align-items: end;
+.top-actions {
+    display: flex;
+    justify-content: flex-end;
     border: 1px solid var(--line);
     border-radius: 24px;
     padding: 14px;
@@ -470,7 +468,6 @@ textarea:focus {
         padding-right: 18px;
     }
 
-    .workspace-control,
     .form-row,
     .table-row {
         grid-template-columns: 1fr;

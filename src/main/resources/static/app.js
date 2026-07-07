@@ -76,14 +76,13 @@ function App() {
     const [agentResult, setAgentResult] = useState(null);
     const [busy, setBusy] = useState(false);
 
-    const redirectUri = `${window.location.origin}/login/oauth2/code/google`;
     const workspace = useMemo(() => {
         return me?.workspaces?.find(item => String(item.workspaceId) === String(workspaceId));
     }, [me, workspaceId]);
 
     useEffect(() => {
         if (new URLSearchParams(window.location.search).has("loginError")) {
-            setStatus("구글 로그인에 실패했습니다. 구글 클라우드 콘솔의 승인된 리디렉션 URI를 확인하세요.");
+            setStatus("로그인에 실패했습니다. 잠시 후 다시 시도하거나 관리자에게 문의해 주세요.");
         }
         loadMe();
     }, []);
@@ -94,20 +93,20 @@ function App() {
             const nextWorkspaceId = data.currentWorkspaceId || data.workspaces[0]?.workspaceId || "";
             setMe(data);
             setWorkspaceId(nextWorkspaceId);
-            setStatus(`로그인됨 · 사용자 #${data.userId}`);
+            setStatus("오늘의 웨딩 업무를 바로 시작할 수 있습니다.");
             if (nextWorkspaceId) {
                 await refreshAll(nextWorkspaceId);
             }
         } catch (error) {
             if (!new URLSearchParams(window.location.search).has("loginError")) {
-                setStatus("로그인 전입니다. 구글 로그인으로 시작하세요.");
+                setStatus("로그인 후 고객과 업체 정보를 확인할 수 있습니다.");
             }
         }
     }
 
     async function refreshAll(id = workspaceId) {
         if (!id) {
-            setStatus("워크스페이스 ID가 필요합니다.");
+            setStatus("로그인 후 워크스페이스 정보를 불러올 수 있습니다.");
             return;
         }
         setBusy(true);
@@ -120,7 +119,7 @@ function App() {
             setCustomers(customerData);
             setVendors(vendorData);
             setSchedules(scheduleData);
-            setStatus(`워크스페이스 ${id} 정보를 불러왔습니다.`);
+            setStatus("최신 업무 정보를 불러왔습니다.");
         } catch (error) {
             setStatus(error.message);
         } finally {
@@ -130,7 +129,7 @@ function App() {
 
     async function submit(path, payload, form, after) {
         if (!workspaceId) {
-            setStatus("워크스페이스 ID가 필요합니다.");
+            setStatus("로그인 후 이용할 수 있습니다.");
             return;
         }
         setBusy(true);
@@ -188,7 +187,7 @@ function App() {
     return h("div", {className: "app-frame"},
         h(Sidebar, {activePage, setActivePage, status}),
         h("div", {className: "page-shell"},
-            h(TopBar, {workspaceId, setWorkspaceId, refreshAll, busy, workspace, redirectUri}),
+            h(TopBar, {refreshAll, busy, workspace, signedIn: Boolean(me)}),
             h("main", {className: "page-content"},
                 activePage === "dashboard" && h(DashboardPage, {customers, vendors, schedules, workspace, setActivePage}),
                 activePage === "customers" && h(CustomersPage, {customers, onSubmit: submitCustomer}),
@@ -217,33 +216,27 @@ function Sidebar({activePage, setActivePage, status}) {
             }, page.label))
         ),
         h("div", {className: "side-status"},
-            h("span", null, "상태"),
+            h("span", null, "오늘의 안내"),
             h("p", null, status)
         ),
-        h("a", {className: "google-button", href: "/oauth2/authorization/google"}, "구글 로그인"),
+        h("a", {className: "google-button", href: "/oauth2/authorization/google"}, "시작하기"),
         h("a", {className: "logout-link", href: "/logout"}, "로그아웃")
     );
 }
 
-function TopBar({workspaceId, setWorkspaceId, refreshAll, busy, workspace, redirectUri}) {
+function TopBar({refreshAll, busy, workspace, signedIn}) {
     return h("header", {className: "topbar"},
         h("div", null,
-            h("span", {className: "eyebrow"}, "현재 워크스페이스"),
-            h("h1", null, workspace?.workspaceName || "웨딩 워크스페이스"),
-            h("p", null, `구글 승인 리디렉션 URI · ${redirectUri}`)
+            h("span", {className: "eyebrow"}, "marry-it wedding workspace"),
+            h("h1", null, workspace?.workspaceName || "웨딩플래너 업무공간"),
+            h("p", null, signedIn
+                ? "고객, 업체, 일정, 추천 업무를 워크스페이스 기준으로 관리하세요."
+                : "로그인하면 개인 워크스페이스가 자동으로 준비됩니다.")
         ),
-        h("div", {className: "workspace-control"},
-            h("label", null,
-                "워크스페이스 ID",
-                h("input", {
-                    value: workspaceId,
-                    onChange: event => setWorkspaceId(event.target.value),
-                    type: "number",
-                    min: "1",
-                    placeholder: "로그인 후 자동 입력"
-                })
-            ),
-            h("button", {className: "dark-button", onClick: () => refreshAll(), disabled: busy}, busy ? "불러오는 중" : "새로고침")
+        h("div", {className: "top-actions"},
+            signedIn
+                ? h("button", {className: "dark-button", onClick: () => refreshAll(), disabled: busy}, busy ? "불러오는 중" : "업무 정보 새로고침")
+                : h("a", {className: "dark-button", href: "/oauth2/authorization/google"}, "구글로 시작하기")
         )
     );
 }
@@ -305,7 +298,7 @@ function VendorsPage({vendors, onSubmit}) {
             .some(value => value.includes(query)));
 
     return h("section", {className: "page-stack"},
-        h(PageTitle, {eyebrow: "업체 관리", title: "등록 업체와 제휴 상태를 관리하세요", description: "워크스페이스에 등록한 업체, 카카오 장소 ID, 담당자, 주소를 한 곳에서 확인합니다."}),
+        h(PageTitle, {eyebrow: "업체 관리", title: "등록 업체와 제휴 상태를 관리하세요", description: "워크스페이스에 등록한 업체, 담당자, 주소, 제휴 여부를 한 곳에서 확인합니다."}),
         h("div", {className: "split-page"},
             h(Panel, {title: "업체 등록"}, h(VendorForm, {onSubmit})),
             h(Panel, {title: "업체 목록", action: `${filteredVendors.length}개`},
@@ -389,7 +382,7 @@ function CustomerForm({onSubmit}) {
 
 function VendorForm({onSubmit}) {
     return h("form", {className: "form", onSubmit},
-        h("div", {className: "form-row"}, h("input", {name: "kakaoPlaceId", placeholder: "카카오 장소 ID", required: true}), h("input", {name: "name", placeholder: "업체명", required: true})),
+        h("div", {className: "form-row"}, h("input", {name: "kakaoPlaceId", placeholder: "장소 식별값", required: true}), h("input", {name: "name", placeholder: "업체명", required: true})),
         h("select", {name: "category", required: true}, categories.map(category => h("option", {key: category, value: category}, label(category)))),
         h("input", {name: "roadAddress", placeholder: "도로명 주소"}),
         h("div", {className: "form-row"}, h("input", {name: "phone", placeholder: "전화번호"}), h("input", {name: "contactPerson", placeholder: "담당자"})),
@@ -437,7 +430,7 @@ function VendorCards({vendors}) {
         h("div", {className: "card-title"}, h("strong", null, vendor.name), h("em", null, vendor.partnered ? "제휴" : "일반")),
         h("span", null, label(vendor.category)),
         h("span", null, vendor.roadAddress || vendor.address || "주소 미입력"),
-        h("span", null, `카카오 장소 ID ${vendor.kakaoPlaceId}`)
+        h("span", null, `장소 식별값 ${vendor.kakaoPlaceId}`)
     )));
 }
 
