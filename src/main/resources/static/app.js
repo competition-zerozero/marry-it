@@ -82,6 +82,7 @@ function App() {
     const [agentResult, setAgentResult] = useState(null);
     const [busy, setBusy] = useState(false);
     const inviteToken = useMemo(() => new URLSearchParams(window.location.search).get("inviteToken"), []);
+    const currentUserId = me?.userId;
     const canInvite = workspace?.role === "OWNER" || workspace?.role === "ADMIN";
 
     const workspace = useMemo(() => {
@@ -222,6 +223,45 @@ function App() {
         });
     }
 
+    async function updateMemberRole(targetUserId, role) {
+        if (!workspaceId) return;
+        setBusy(true);
+        try {
+            await api(`/api/workspaces/${workspaceId}/members/${targetUserId}/role`, {
+                method: "PATCH",
+                body: JSON.stringify({role})
+            });
+            await refreshAll(workspaceId, workspace?.role);
+            setStatus("멤버 권한을 변경했습니다.");
+        } catch (error) {
+            setStatus(error.message);
+        } finally {
+            setBusy(false);
+        }
+    }
+
+    async function removeMember(targetUserId) {
+        if (!workspaceId) return;
+        setBusy(true);
+        try {
+            await api(`/api/workspaces/${workspaceId}/members/${targetUserId}`, {
+                method: "DELETE"
+            });
+            await refreshAll(workspaceId, workspace?.role);
+            setStatus("멤버를 제거했습니다.");
+        } catch (error) {
+            setStatus(error.message);
+        } finally {
+            setBusy(false);
+        }
+    }
+
+    async function switchWorkspace(nextWorkspaceId) {
+        const nextWorkspace = me?.workspaces?.find(item => String(item.workspaceId) === String(nextWorkspaceId));
+        setWorkspaceId(nextWorkspaceId);
+        await refreshAll(nextWorkspaceId, nextWorkspace?.role);
+    }
+
     async function acceptInvite() {
         if (!inviteToken) {
             return;
@@ -242,7 +282,15 @@ function App() {
     return h("div", {className: "app-frame"},
         h(Sidebar, {activePage, setActivePage, status}),
         h("div", {className: "page-shell"},
-            h(TopBar, {refreshAll, busy, workspace, signedIn: Boolean(me)}),
+            h(TopBar, {
+                refreshAll,
+                busy,
+                workspace,
+                workspaces: me?.workspaces || [],
+                workspaceId,
+                onSwitchWorkspace: switchWorkspace,
+                signedIn: Boolean(me)
+            }),
             inviteToken && h(InviteBanner, {inviteDetail, signedIn: Boolean(me), onAcceptInvite: acceptInvite, busy}),
             h("main", {className: "page-content"},
                 activePage === "dashboard" && h(DashboardPage, {
@@ -253,8 +301,11 @@ function App() {
                     invitations,
                     workspace,
                     canInvite,
+                    currentUserId,
                     setActivePage,
-                    onSubmitInvite: submitInvite
+                    onSubmitInvite: submitInvite,
+                    onUpdateMemberRole: updateMemberRole,
+                    onRemoveMember: removeMember
                 }),
                 activePage === "customers" && h(CustomersPage, {customers, onSubmit: submitCustomer}),
                 activePage === "vendors" && h(VendorsPage, {vendors, onSubmit: submitVendor}),
@@ -290,7 +341,7 @@ function Sidebar({activePage, setActivePage, status}) {
     );
 }
 
-function TopBar({refreshAll, busy, workspace, signedIn}) {
+function TopBar({refreshAll, busy, workspace, workspaces, workspaceId, onSwitchWorkspace, signedIn}) {
     return h("header", {className: "topbar"},
         h("div", null,
             h("span", {className: "eyebrow"}, "marry-it wedding workspace"),
@@ -301,13 +352,19 @@ function TopBar({refreshAll, busy, workspace, signedIn}) {
         ),
         h("div", {className: "top-actions"},
             signedIn
-                ? h("button", {className: "dark-button", onClick: () => refreshAll(), disabled: busy}, busy ? "불러오는 중" : "업무 정보 새로고침")
+                ? h("div", {className: "workspace-switcher"},
+                    h("select", {
+                        value: workspaceId,
+                        onChange: event => onSwitchWorkspace(event.target.value)
+                    }, workspaces.map(item => h("option", {key: item.workspaceId, value: item.workspaceId}, item.workspaceName))),
+                    h("button", {className: "dark-button", onClick: () => refreshAll(), disabled: busy}, busy ? "불러오는 중" : "업무 정보 새로고침")
+                )
                 : h("a", {className: "dark-button", href: "/oauth2/authorization/google"}, "구글로 시작하기")
         )
     );
 }
 
-function DashboardPage({customers, vendors, schedules, teamMembers, invitations, workspace, canInvite, setActivePage, onSubmitInvite}) {
+function DashboardPage({customers, vendors, schedules, teamMembers, invitations, workspace, canInvite, currentUserId, setActivePage, onSubmitInvite, onUpdateMemberRole, onRemoveMember}) {
     const nextSchedules = schedules.slice(0, 4);
     const recentCustomers = customers.slice(0, 4);
     const recentVendors = vendors.slice(0, 4);
@@ -340,7 +397,13 @@ function DashboardPage({customers, vendors, schedules, teamMembers, invitations,
                     h("strong", null, `현재 멤버 ${teamMembers.length}명`),
                     h("p", null, "같은 워크스페이스를 공유하는 계정과 초대 상태를 확인합니다.")
                 ),
-                h(TeamCards, {members: teamMembers}),
+                h(TeamCards, {
+                    members: teamMembers,
+                    currentUserId,
+                    currentRole: workspace?.role,
+                    onUpdateMemberRole,
+                    onRemoveMember
+                }),
                 canInvite && h("div", {className: "invite-block"},
                     h("h4", null, "새 멤버 초대"),
                     h("p", null, "이메일로 초대 링크를 공유합니다. 수락한 계정만 워크스페이스에 들어옵니다."),
@@ -453,13 +516,33 @@ function InviteForm({onSubmit, workspaceRole}) {
     );
 }
 
-function TeamCards({members}) {
+function TeamCards({members, currentUserId, currentRole, onUpdateMemberRole, onRemoveMember}) {
     if (members.length === 0) return h(Empty, {message: "등록된 멤버가 없습니다."});
     return h("div", {className: "cards team-cards"},
         members.map(member => h("div", {className: "data-card", key: member.userId},
             h("div", {className: "card-title"}, h("strong", null, member.userName), h("em", null, label(member.role))),
             h("span", null, member.userEmail),
-            h("span", null, `합류일 ${member.joinedAt ? member.joinedAt.replace("T", " ") : "-"}`)
+            h("span", null, `합류일 ${member.joinedAt ? member.joinedAt.replace("T", " ") : "-"}`),
+            member.userId !== currentUserId && currentRole && currentRole !== "MEMBER" && h("div", {className: "member-actions"},
+                h("select", {
+                    defaultValue: member.role,
+                    onChange: event => event.currentTarget.dataset.changedRole = event.target.value
+                },
+                    h("option", {value: "MEMBER"}, "멤버"),
+                    currentRole === "OWNER" && h("option", {value: "ADMIN"}, "관리자")
+                ),
+                h("button", {
+                    className: "panel-action",
+                    onClick: event => {
+                        const nextRole = event.currentTarget.parentElement.querySelector("select").value;
+                        onUpdateMemberRole(member.userId, nextRole);
+                    }
+                }, "권한 변경"),
+                h("button", {
+                    className: "panel-action",
+                    onClick: () => onRemoveMember(member.userId)
+                }, "제거")
+            )
         ))
     );
 }

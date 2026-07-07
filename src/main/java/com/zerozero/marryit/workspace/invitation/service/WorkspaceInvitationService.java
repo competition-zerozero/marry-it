@@ -23,19 +23,22 @@ public class WorkspaceInvitationService {
     private final WorkspaceInvitationRepository workspaceInvitationRepository;
     private final WorkspaceAccessService workspaceAccessService;
     private final UserRepository userRepository;
+    private final WorkspaceInvitationMailService workspaceInvitationMailService;
 
     public WorkspaceInvitationService(
             WorkspaceRepository workspaceRepository,
             WorkspaceMemberRepository workspaceMemberRepository,
             WorkspaceInvitationRepository workspaceInvitationRepository,
             WorkspaceAccessService workspaceAccessService,
-            UserRepository userRepository
+            UserRepository userRepository,
+            WorkspaceInvitationMailService workspaceInvitationMailService
     ) {
         this.workspaceRepository = workspaceRepository;
         this.workspaceMemberRepository = workspaceMemberRepository;
         this.workspaceInvitationRepository = workspaceInvitationRepository;
         this.workspaceAccessService = workspaceAccessService;
         this.userRepository = userRepository;
+        this.workspaceInvitationMailService = workspaceInvitationMailService;
     }
 
     @Transactional
@@ -67,7 +70,9 @@ public class WorkspaceInvitationService {
                 request.invitedEmail(),
                 request.role()
         );
-        return WorkspaceInvitationResponse.from(workspaceInvitationRepository.save(invitation));
+        WorkspaceInvitationResponse response = WorkspaceInvitationResponse.from(workspaceInvitationRepository.save(invitation));
+        workspaceInvitationMailService.sendInvitation(response);
+        return response;
     }
 
     @Transactional(readOnly = true)

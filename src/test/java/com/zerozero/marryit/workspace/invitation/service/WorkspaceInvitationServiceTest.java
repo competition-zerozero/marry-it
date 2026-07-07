@@ -20,7 +20,7 @@ import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
 import org.springframework.context.annotation.Import;
 
 @DataJpaTest
-@Import({WorkspaceInvitationService.class, WorkspaceAccessService.class})
+@Import({WorkspaceInvitationService.class, WorkspaceInvitationMailService.class, WorkspaceAccessService.class})
 class WorkspaceInvitationServiceTest {
 
     @Autowired

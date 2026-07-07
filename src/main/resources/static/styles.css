@@ -220,6 +220,16 @@ button {
     align-items: center;
 }
 
+.workspace-switcher {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.workspace-switcher select {
+    min-width: 180px;
+}
+
 label {
     display: grid;
     gap: 6px;
@@ -481,6 +491,13 @@ textarea:focus {
 .team-cards,
 .invitation-cards {
     margin-top: 10px;
+}
+
+.member-actions {
+    display: grid;
+    grid-template-columns: minmax(110px, 140px) auto auto;
+    gap: 8px;
+    margin-top: 8px;
 }
 
 .assistant-preview p,
