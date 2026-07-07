@@ -59,6 +59,18 @@ public class WorkspaceMember {
         return new WorkspaceMember(user, workspace, WorkspaceRole.OWNER);
     }
 
+    public static WorkspaceMember admin(User user, Workspace workspace) {
+        return new WorkspaceMember(user, workspace, WorkspaceRole.ADMIN);
+    }
+
+    public static WorkspaceMember member(User user, Workspace workspace, WorkspaceRole role) {
+        return new WorkspaceMember(user, workspace, role);
+    }
+
+    public void updateRole(WorkspaceRole role) {
+        this.role = role;
+    }
+
     @PrePersist
     void prePersist() {
         this.joinedAt = LocalDateTime.now();

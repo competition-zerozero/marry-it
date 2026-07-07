@@ -34,7 +34,10 @@ const labels = {
     PERSONAL_TASK: "개인 업무",
     OWNER: "소유자",
     ADMIN: "관리자",
-    MEMBER: "멤버"
+    MEMBER: "멤버",
+    PENDING: "대기",
+    ACCEPTED: "수락됨",
+    REVOKED: "취소됨"
 };
 
 async function api(path, options = {}) {
@@ -73,8 +76,13 @@ function App() {
     const [customers, setCustomers] = useState([]);
     const [vendors, setVendors] = useState([]);
     const [schedules, setSchedules] = useState([]);
+    const [teamMembers, setTeamMembers] = useState([]);
+    const [invitations, setInvitations] = useState([]);
+    const [inviteDetail, setInviteDetail] = useState(null);
     const [agentResult, setAgentResult] = useState(null);
     const [busy, setBusy] = useState(false);
+    const inviteToken = useMemo(() => new URLSearchParams(window.location.search).get("inviteToken"), []);
+    const canInvite = workspace?.role === "OWNER" || workspace?.role === "ADMIN";
 
     const workspace = useMemo(() => {
         return me?.workspaces?.find(item => String(item.workspaceId) === String(workspaceId));
@@ -85,17 +93,21 @@ function App() {
             setStatus("로그인에 실패했습니다. 잠시 후 다시 시도하거나 관리자에게 문의해 주세요.");
         }
         loadMe();
+        if (inviteToken) {
+            loadInvite(inviteToken);
+        }
     }, []);
 
     async function loadMe() {
         try {
             const data = await api("/api/me");
             const nextWorkspaceId = data.currentWorkspaceId || data.workspaces[0]?.workspaceId || "";
+            const nextWorkspace = data.workspaces.find(item => String(item.workspaceId) === String(nextWorkspaceId));
             setMe(data);
             setWorkspaceId(nextWorkspaceId);
             setStatus("오늘의 웨딩 업무를 바로 시작할 수 있습니다.");
             if (nextWorkspaceId) {
-                await refreshAll(nextWorkspaceId);
+                await refreshAll(nextWorkspaceId, nextWorkspace?.role);
             }
         } catch (error) {
             if (!new URLSearchParams(window.location.search).has("loginError")) {
@@ -104,26 +116,42 @@ function App() {
         }
     }
 
-    async function refreshAll(id = workspaceId) {
+    async function refreshAll(id = workspaceId, role = workspace?.role) {
         if (!id) {
             setStatus("로그인 후 워크스페이스 정보를 불러올 수 있습니다.");
             return;
         }
         setBusy(true);
         try {
-            const [customerData, vendorData, scheduleData] = await Promise.all([
+            const [customerData, vendorData, scheduleData, memberData] = await Promise.all([
                 api(`/api/workspaces/${id}/customers`),
                 api(`/api/workspaces/${id}/vendors`),
-                api(`/api/workspaces/${id}/schedules`)
+                api(`/api/workspaces/${id}/schedules`),
+                api(`/api/workspaces/${id}/members`)
             ]);
             setCustomers(customerData);
             setVendors(vendorData);
             setSchedules(scheduleData);
+            setTeamMembers(memberData);
+            if (role === "OWNER" || role === "ADMIN") {
+                setInvitations(await api(`/api/workspaces/${id}/invitations`));
+            } else {
+                setInvitations([]);
+            }
             setStatus("최신 업무 정보를 불러왔습니다.");
         } catch (error) {
             setStatus(error.message);
         } finally {
             setBusy(false);
+        }
+    }
+
+    async function loadInvite(token) {
+        try {
+            const data = await api(`/api/workspaces/invitations/${token}`);
+            setInviteDetail(data);
+        } catch (error) {
+            setInviteDetail({error: error.message});
         }
     }
 
@@ -184,12 +212,50 @@ function App() {
         });
     }
 
+    async function submitInvite(event) {
+        event.preventDefault();
+        const form = event.currentTarget;
+        const data = Object.fromEntries(new FormData(form));
+        await submit(`/api/workspaces/${workspaceId}/invitations`, data, form, result => {
+            setInvitations(prev => [result, ...prev]);
+            setStatus("초대 링크를 생성했습니다. 상대에게 링크를 전달하세요.");
+        });
+    }
+
+    async function acceptInvite() {
+        if (!inviteToken) {
+            return;
+        }
+        setBusy(true);
+        try {
+            const result = await api(`/api/workspaces/invitations/${inviteToken}/accept`, {method: "POST"});
+            setInviteDetail(result);
+            setStatus("초대를 수락했습니다. 워크스페이스가 전환되었습니다.");
+            await loadMe();
+        } catch (error) {
+            setStatus(error.message);
+        } finally {
+            setBusy(false);
+        }
+    }
+
     return h("div", {className: "app-frame"},
         h(Sidebar, {activePage, setActivePage, status}),
         h("div", {className: "page-shell"},
             h(TopBar, {refreshAll, busy, workspace, signedIn: Boolean(me)}),
+            inviteToken && h(InviteBanner, {inviteDetail, signedIn: Boolean(me), onAcceptInvite: acceptInvite, busy}),
             h("main", {className: "page-content"},
-                activePage === "dashboard" && h(DashboardPage, {customers, vendors, schedules, workspace, setActivePage}),
+                activePage === "dashboard" && h(DashboardPage, {
+                    customers,
+                    vendors,
+                    schedules,
+                    teamMembers,
+                    invitations,
+                    workspace,
+                    canInvite,
+                    setActivePage,
+                    onSubmitInvite: submitInvite
+                }),
                 activePage === "customers" && h(CustomersPage, {customers, onSubmit: submitCustomer}),
                 activePage === "vendors" && h(VendorsPage, {vendors, onSubmit: submitVendor}),
                 activePage === "schedules" && h(SchedulesPage, {schedules, onSubmit: submitSchedule}),
@@ -241,7 +307,7 @@ function TopBar({refreshAll, busy, workspace, signedIn}) {
     );
 }
 
-function DashboardPage({customers, vendors, schedules, workspace, setActivePage}) {
+function DashboardPage({customers, vendors, schedules, teamMembers, invitations, workspace, canInvite, setActivePage, onSubmitInvite}) {
     const nextSchedules = schedules.slice(0, 4);
     const recentCustomers = customers.slice(0, 4);
     const recentVendors = vendors.slice(0, 4);
@@ -267,6 +333,19 @@ function DashboardPage({customers, vendors, schedules, workspace, setActivePage}
                 h("div", {className: "assistant-preview"},
                     h("strong", null, "AI 도우미는 워크스페이스 등록 업체를 먼저 확인합니다."),
                     h("p", null, "기존 거래처가 없을 때만 카카오맵 외부 후보를 분리해서 보여줍니다.")
+                )
+            ),
+            h(Panel, {title: "팀 구성"},
+                h("div", {className: "team-summary"},
+                    h("strong", null, `현재 멤버 ${teamMembers.length}명`),
+                    h("p", null, "같은 워크스페이스를 공유하는 계정과 초대 상태를 확인합니다.")
+                ),
+                h(TeamCards, {members: teamMembers}),
+                canInvite && h("div", {className: "invite-block"},
+                    h("h4", null, "새 멤버 초대"),
+                    h("p", null, "이메일로 초대 링크를 공유합니다. 수락한 계정만 워크스페이스에 들어옵니다."),
+                    h(InviteForm, {onSubmit: onSubmitInvite, workspaceRole: workspace?.role}),
+                    h(InvitationCards, {invitations})
                 )
             )
         )
@@ -337,11 +416,63 @@ function AgentPage({onSubmit, result}) {
     );
 }
 
+function InviteBanner({inviteDetail, signedIn, onAcceptInvite, busy}) {
+    return h("section", {className: "invite-banner"},
+        h("div", null,
+            h("span", {className: "eyebrow"}, "워크스페이스 초대"),
+            inviteDetail?.error
+                ? h("p", null, inviteDetail.error)
+                : h("h2", null, inviteDetail ? `${inviteDetail.workspaceName} 초대` : "초대 내용을 확인하는 중"),
+            inviteDetail && !inviteDetail.error && h("p", null, `${inviteDetail.invitedEmail} 계정으로 ${label(inviteDetail.role)} 권한 초대가 도착했습니다.`)
+        ),
+        inviteDetail && !inviteDetail.error && h("div", {className: "invite-actions"},
+            signedIn
+                ? h("button", {className: "dark-button", onClick: onAcceptInvite, disabled: busy}, busy ? "수락 처리 중" : "초대 수락")
+                : h("a", {className: "dark-button", href: "/oauth2/authorization/google"}, "구글로 로그인")
+        )
+    );
+}
+
 function PageTitle({eyebrow, title, description}) {
     return h("div", {className: "page-title"},
         h("span", {className: "eyebrow"}, eyebrow),
         h("h2", null, title),
         h("p", null, description)
+    );
+}
+
+function InviteForm({onSubmit, workspaceRole}) {
+    const canInviteAdmin = workspaceRole === "OWNER";
+    return h("form", {className: "form", onSubmit},
+        h("input", {name: "invitedEmail", type: "email", placeholder: "초대할 이메일", required: true}),
+        h("select", {name: "role", required: true},
+            h("option", {value: "MEMBER"}, "멤버"),
+            canInviteAdmin && h("option", {value: "ADMIN"}, "관리자")
+        ),
+        h("button", {className: "submit-button"}, "초대 링크 생성")
+    );
+}
+
+function TeamCards({members}) {
+    if (members.length === 0) return h(Empty, {message: "등록된 멤버가 없습니다."});
+    return h("div", {className: "cards team-cards"},
+        members.map(member => h("div", {className: "data-card", key: member.userId},
+            h("div", {className: "card-title"}, h("strong", null, member.userName), h("em", null, label(member.role))),
+            h("span", null, member.userEmail),
+            h("span", null, `합류일 ${member.joinedAt ? member.joinedAt.replace("T", " ") : "-"}`)
+        ))
+    );
+}
+
+function InvitationCards({invitations}) {
+    if (invitations.length === 0) return h(Empty, {message: "보낸 초대가 없습니다."});
+    return h("div", {className: "cards invitation-cards"},
+        invitations.map(invitation => h("div", {className: "data-card", key: invitation.id},
+            h("div", {className: "card-title"}, h("strong", null, invitation.invitedEmail), h("em", null, label(invitation.status))),
+            h("span", null, `${label(invitation.role)} 초대`),
+            h("span", null, `만료 ${invitation.expiresAt ? invitation.expiresAt.replace("T", " ") : "-"}`),
+            h("a", {href: invitation.inviteUrl}, "초대 링크 열기")
+        ))
     );
 }
 

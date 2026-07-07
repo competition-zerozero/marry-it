@@ -1,6 +1,7 @@
 package com.zerozero.marryit.auth.config;
 
 import com.zerozero.marryit.auth.oauth.OAuth2LoginSuccessHandler;
+import org.springframework.http.HttpMethod;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -21,6 +22,7 @@ public class SecurityConfig {
         http
                 .authorizeHttpRequests(authorize -> authorize
                         .requestMatchers("/", "/index.html", "/app.js", "/styles.css", "/login", "/error", "/h2-console/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/workspaces/invitations/**").permitAll()
                         .anyRequest().authenticated()
                 )
                 .logout(logout -> logout.logoutSuccessUrl("/"))
