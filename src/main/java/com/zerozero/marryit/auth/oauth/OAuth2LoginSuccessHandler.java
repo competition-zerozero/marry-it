@@ -7,6 +7,7 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.oauth2.client.authentication.OAuth2AuthenticationToken;
 import org.springframework.security.web.authentication.SimpleUrlAuthenticationSuccessHandler;
@@ -23,11 +24,12 @@ public class OAuth2LoginSuccessHandler extends SimpleUrlAuthenticationSuccessHan
 
     public OAuth2LoginSuccessHandler(
             OAuthLoginService oauthLoginService,
-            GoogleOAuthUserProfileMapper googleOAuthUserProfileMapper
+            GoogleOAuthUserProfileMapper googleOAuthUserProfileMapper,
+            @Value("${app.frontend-url:/}") String frontendUrl
     ) {
         this.oauthLoginService = oauthLoginService;
         this.googleOAuthUserProfileMapper = googleOAuthUserProfileMapper;
-        setDefaultTargetUrl("/");
+        setDefaultTargetUrl(frontendUrl);
     }
 
     @Override

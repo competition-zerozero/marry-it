@@ -3,6 +3,7 @@ package com.zerozero.marryit.auth.config;
 import com.zerozero.marryit.auth.oauth.OAuth2LoginSuccessHandler;
 import org.springframework.http.HttpMethod;
 import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.Customizer;
@@ -17,7 +18,8 @@ public class SecurityConfig {
     SecurityFilterChain securityFilterChain(
             HttpSecurity http,
             OAuth2LoginSuccessHandler oauth2LoginSuccessHandler,
-            ObjectProvider<ClientRegistrationRepository> clientRegistrationRepository
+            ObjectProvider<ClientRegistrationRepository> clientRegistrationRepository,
+            @Value("${app.frontend-url:/}") String frontendUrl
     ) throws Exception {
         http
                 .authorizeHttpRequests(authorize -> authorize
@@ -25,14 +27,14 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/workspaces/invitations/**").permitAll()
                         .anyRequest().authenticated()
                 )
-                .logout(logout -> logout.logoutSuccessUrl("/"))
+                .logout(logout -> logout.logoutSuccessUrl(frontendUrl))
                 .csrf(csrf -> csrf.ignoringRequestMatchers("/h2-console/**"))
                 .headers(headers -> headers.frameOptions(Customizer.withDefaults()));
 
         if (clientRegistrationRepository.getIfAvailable() != null) {
             http.oauth2Login(oauth2 -> oauth2
                     .successHandler(oauth2LoginSuccessHandler)
-                    .failureUrl("/?loginError=true")
+                    .failureUrl(frontendUrl + "/?loginError=true")
             );
         }
 
