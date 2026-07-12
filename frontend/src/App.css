@@ -812,11 +812,48 @@ button:disabled {
 .result-box,
 .recommendation-result {
   display: grid;
-  gap: 10px;
+  gap: 6px;
   margin-top: 16px;
-  border-radius: 8px;
-  background: #fff5f8;
-  padding: 14px;
+}
+
+.recommendation-section-label {
+  margin: 0;
+  font-size: 11px;
+  font-weight: 800;
+  color: #ff5b8a;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.candidate-list {
+  display: grid;
+  gap: 8px;
+}
+
+.candidate-card {
+  display: grid;
+  gap: 3px;
+  padding: 12px 14px;
+  background: #f9f9fc;
+  border: 1px solid #f0edf1;
+  border-radius: 10px;
+}
+
+.candidate-card__name {
+  font-size: 14px;
+  font-weight: 700;
+  color: #111114;
+}
+
+.candidate-card__address {
+  font-size: 12px;
+  color: #8a8a96;
+}
+
+.candidate-card__reason {
+  font-size: 13px;
+  color: #444450;
+  margin-top: 2px;
 }
 
 .edit-form {
@@ -936,9 +973,6 @@ button:disabled {
   color: #d6336c;
 }
 
-.recommendation-result h4 {
-  margin: 8px 0 0;
-}
 
 @media (max-width: 1024px) {
   .sub-sidebar {

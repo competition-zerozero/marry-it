@@ -1689,31 +1689,38 @@ function ScheduleEditForm({ schedule, customers, vendors, loading, onSubmit, onC
   )
 }
 
+function CandidateCard({ candidate }) {
+  return (
+    <div className="candidate-card">
+      <strong className="candidate-card__name">{candidate.name || candidate.vendorName}</strong>
+      {candidate.address && <span className="candidate-card__address">{candidate.address}</span>}
+      {candidate.reason && <span className="candidate-card__reason">{candidate.reason}</span>}
+    </div>
+  )
+}
+
 function RecommendationResult({ recommendation }) {
+  const workspace = recommendation.workspaceCandidates || []
+  const external = recommendation.externalCandidates || []
+
   return (
     <div className="recommendation-result">
-      <h4>기존 Workspace 업체</h4>
-      <ResultList
-        items={recommendation.workspaceCandidates || []}
-        emptyMessage="조건에 맞는 기존 업체가 없습니다."
-        renderItem={(candidate) => (
-          <>
-            <strong>{candidate.name || candidate.vendorName}</strong>
-            <span>{candidate.reason || candidate.source}</span>
-          </>
-        )}
-      />
-      <h4>외부 업체 후보</h4>
-      <ResultList
-        items={recommendation.externalCandidates || []}
-        emptyMessage="외부 후보가 없습니다."
-        renderItem={(candidate) => (
-          <>
-            <strong>{candidate.name || candidate.vendorName}</strong>
-            <span>{candidate.reason || candidate.source}</span>
-          </>
-        )}
-      />
+      <p className="recommendation-section-label">등록 업체 ({workspace.length})</p>
+      {workspace.length === 0 ? (
+        <p className="empty">조건에 맞는 등록 업체가 없습니다.</p>
+      ) : (
+        <div className="candidate-list">
+          {workspace.map((c) => <CandidateCard key={c.vendorId || c.kakaoPlaceId} candidate={c} />)}
+        </div>
+      )}
+      <p className="recommendation-section-label" style={{ marginTop: 16 }}>외부 후보 ({external.length})</p>
+      {external.length === 0 ? (
+        <p className="empty">외부 후보가 없습니다.</p>
+      ) : (
+        <div className="candidate-list">
+          {external.map((c) => <CandidateCard key={c.kakaoPlaceId} candidate={c} />)}
+        </div>
+      )}
     </div>
   )
 }

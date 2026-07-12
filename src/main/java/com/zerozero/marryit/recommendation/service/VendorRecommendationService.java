@@ -32,20 +32,49 @@ public class VendorRecommendationService {
         List<VendorCandidateResponse> workspaceCandidates = vendorRepository
                 .findByWorkspaceIdAndCategoryOrderByIdDesc(workspaceId, request.category())
                 .stream()
+                .filter(vendor -> matchesArea(vendor, request.areaKeyword()))
                 .map(this::toWorkspaceCandidate)
                 .toList();
 
         List<VendorCandidateResponse> externalCandidates = List.of();
-        if (workspaceCandidates.isEmpty() && request.includeExternalSearch()) {
+        if (request.includeExternalSearch()) {
             externalCandidates = searchExternalCandidates(request);
         }
 
         return new VendorRecommendationResponse(workspaceCandidates, externalCandidates);
     }
 
+    private boolean matchesArea(Vendor vendor, String areaKeyword) {
+        if (areaKeyword == null || areaKeyword.isBlank()) {
+            return true;
+        }
+        String keyword = areaKeyword.trim().toLowerCase();
+        String address = vendor.getRoadAddress() != null ? vendor.getRoadAddress() : vendor.getAddress();
+        return address != null && address.toLowerCase().contains(keyword);
+    }
+
     private VendorCandidateResponse toWorkspaceCandidate(Vendor vendor) {
-        String reason = "Workspace에 등록된 기존 거래처입니다. 상세 추천 판단에는 업체 경험, 일정, 계약 조건 확인이 필요합니다.";
+        String reason = buildReason(vendor);
         return VendorCandidateResponse.workspaceVendor(vendor, reason);
+    }
+
+    private String buildReason(Vendor vendor) {
+        StringBuilder sb = new StringBuilder();
+        if (vendor.getMemo() != null && !vendor.getMemo().isBlank()) {
+            sb.append(vendor.getMemo());
+        }
+        if (vendor.getContactPerson() != null && !vendor.getContactPerson().isBlank()) {
+            if (!sb.isEmpty()) sb.append(" · ");
+            sb.append("담당: ").append(vendor.getContactPerson());
+        }
+        if (vendor.isPartnered()) {
+            if (!sb.isEmpty()) sb.append(" · ");
+            sb.append("제휴 업체");
+        }
+        if (sb.isEmpty()) {
+            sb.append("등록된 거래처입니다.");
+        }
+        return sb.toString();
     }
 
     private List<VendorCandidateResponse> searchExternalCandidates(VendorRecommendationRequest request) {
