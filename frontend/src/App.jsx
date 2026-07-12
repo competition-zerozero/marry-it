@@ -121,6 +121,7 @@ function vendorPayload(data, form) {
     placeUrl: data.get('placeUrl'),
     partnered: form.partnered.checked,
     contactPerson: data.get('contactPerson'),
+    memo: data.get('memo'),
   }
 }
 
@@ -1345,6 +1346,7 @@ function VendorDetailView({ vendor, workspaceId, loading, onEdit, onDelete, subm
     ['도로명 주소', vendor.roadAddress],
     ['주소', vendor.address],
     ['제휴 여부', vendor.partnered ? '제휴 업체' : null],
+    ['메모', vendor.memo],
     ['카카오 장소 ID', vendor.kakaoPlaceId],
     ['카카오 URL', vendor.placeUrl],
   ]
@@ -1484,6 +1486,7 @@ function VendorAddForm({ workspaceId, loading, onSubmit }) {
           <input name="partnered" type="checkbox" />
           제휴 업체
         </label>
+        <textarea name="memo" placeholder="간략한 특징 (예: 빠른 대응, 화이트톤 강점, 주차 협소)" />
         <button type="submit" disabled={loading}>업체 저장</button>
       </form>
     </div>
@@ -1515,6 +1518,7 @@ function VendorEditForm({ vendor, loading, onSubmit, onCancel }) {
         <input name="partnered" type="checkbox" defaultChecked={vendor.partnered} />
         제휴 업체
       </label>
+      <textarea name="memo" placeholder="간략한 특징" defaultValue={vendor.memo || ''} />
       <div className="action-row">
         <button type="submit" disabled={loading}>
           수정 저장

@@ -17,7 +17,8 @@ public record VendorResponse(
         BigDecimal longitude,
         String placeUrl,
         boolean partnered,
-        String contactPerson
+        String contactPerson,
+        String memo
 ) {
 
     public static VendorResponse from(Vendor vendor) {
@@ -34,7 +35,8 @@ public record VendorResponse(
                 vendor.getLongitude(),
                 vendor.getPlaceUrl(),
                 vendor.isPartnered(),
-                vendor.getContactPerson()
+                vendor.getContactPerson(),
+                vendor.getMemo()
         );
     }
 }

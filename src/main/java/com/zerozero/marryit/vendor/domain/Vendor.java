@@ -69,6 +69,9 @@ public class Vendor extends BaseTimeEntity {
     @Column(length = 100)
     private String contactPerson;
 
+    @Column(columnDefinition = "TEXT")
+    private String memo;
+
     protected Vendor() {
     }
 
@@ -84,7 +87,8 @@ public class Vendor extends BaseTimeEntity {
             BigDecimal longitude,
             String placeUrl,
             boolean partnered,
-            String contactPerson
+            String contactPerson,
+            String memo
     ) {
         this.workspace = workspace;
         this.kakaoPlaceId = kakaoPlaceId;
@@ -98,6 +102,7 @@ public class Vendor extends BaseTimeEntity {
         this.placeUrl = placeUrl;
         this.partnered = partnered;
         this.contactPerson = contactPerson;
+        this.memo = memo;
     }
 
     public static Vendor create(
@@ -112,7 +117,8 @@ public class Vendor extends BaseTimeEntity {
             BigDecimal longitude,
             String placeUrl,
             boolean partnered,
-            String contactPerson
+            String contactPerson,
+            String memo
     ) {
         return new Vendor(
                 workspace,
@@ -126,7 +132,8 @@ public class Vendor extends BaseTimeEntity {
                 longitude,
                 placeUrl,
                 partnered,
-                contactPerson
+                contactPerson,
+                memo
         );
     }
 
@@ -140,7 +147,8 @@ public class Vendor extends BaseTimeEntity {
             BigDecimal longitude,
             String placeUrl,
             boolean partnered,
-            String contactPerson
+            String contactPerson,
+            String memo
     ) {
         this.name = name;
         this.category = category;
@@ -152,6 +160,7 @@ public class Vendor extends BaseTimeEntity {
         this.placeUrl = placeUrl;
         this.partnered = partnered;
         this.contactPerson = contactPerson;
+        this.memo = memo;
     }
 
     public Long getId() {
@@ -204,5 +213,9 @@ public class Vendor extends BaseTimeEntity {
 
     public String getContactPerson() {
         return contactPerson;
+    }
+
+    public String getMemo() {
+        return memo;
     }
 }

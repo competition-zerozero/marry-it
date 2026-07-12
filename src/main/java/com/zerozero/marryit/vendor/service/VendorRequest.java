@@ -19,6 +19,7 @@ public record VendorRequest(
         BigDecimal longitude,
         String placeUrl,
         boolean partnered,
-        String contactPerson
+        String contactPerson,
+        String memo
 ) {
 }

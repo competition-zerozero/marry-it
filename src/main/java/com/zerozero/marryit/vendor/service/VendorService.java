@@ -46,7 +46,8 @@ public class VendorService {
                 request.longitude(),
                 request.placeUrl(),
                 request.partnered(),
-                request.contactPerson()
+                request.contactPerson(),
+                request.memo()
         );
 
         return VendorResponse.from(vendorRepository.save(vendor));
@@ -84,7 +85,8 @@ public class VendorService {
                 request.longitude(),
                 request.placeUrl(),
                 request.partnered(),
-                request.contactPerson()
+                request.contactPerson(),
+                request.memo()
         );
         return VendorResponse.from(vendor);
     }
