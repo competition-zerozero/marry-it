@@ -41,9 +41,19 @@ public class WorkspaceInvitationController {
         return workspaceInvitationService.findAll(workspaceId, currentUserId(session));
     }
 
+    @GetMapping("/me/invitations")
+    public List<WorkspaceInvitationResponse> findMyInvitations(HttpSession session) {
+        return workspaceInvitationService.findMyInvitations(currentUserId(session));
+    }
+
     @GetMapping("/workspaces/invitations/{token}")
     public WorkspaceInvitationResponse getByToken(@PathVariable String token) {
         return workspaceInvitationService.getByToken(token);
+    }
+
+    @PostMapping("/workspaces/invitations/{token}/decline")
+    public WorkspaceInvitationResponse decline(@PathVariable String token, HttpSession session) {
+        return workspaceInvitationService.decline(token, currentUserId(session));
     }
 
     @PostMapping("/workspaces/invitations/{token}/accept")

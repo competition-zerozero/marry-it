@@ -98,6 +98,10 @@ public class WorkspaceInvitation extends BaseTimeEntity {
         this.acceptedAt = LocalDateTime.now();
     }
 
+    public void decline() {
+        this.status = WorkspaceInvitationStatus.DECLINED;
+    }
+
     public Long getId() {
         return id;
     }

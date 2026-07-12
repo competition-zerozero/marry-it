@@ -830,6 +830,146 @@ button:disabled {
   gap: 8px;
 }
 
+/* ── Team tab ── */
+.member-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+}
+
+.member-card {
+  display: grid;
+  gap: 4px;
+  padding: 12px 14px;
+  background: #f9f9fc;
+  border: 1px solid #f0edf1;
+  border-radius: 10px;
+}
+
+.member-card__info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.member-card__info strong {
+  font-size: 14px;
+  font-weight: 700;
+  color: #111114;
+}
+
+.member-card__email {
+  font-size: 12px;
+  color: #8a8a96;
+}
+
+.member-card__actions {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  margin-top: 4px;
+}
+
+.member-card__actions select {
+  min-height: auto;
+  padding: 4px 8px;
+  font-size: 12px;
+}
+
+.role-badge {
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 99px;
+  letter-spacing: 0.04em;
+}
+
+.role-badge--owner {
+  background: #fff0f5;
+  color: #c2185b;
+}
+
+.role-badge--admin {
+  background: #f3e5f5;
+  color: #7b1fa2;
+}
+
+.role-badge--member {
+  background: #f5f5f5;
+  color: #555560;
+}
+
+.invitation-list {
+  list-style: none;
+  margin: 8px 0 0;
+  padding: 0;
+  display: grid;
+  gap: 6px;
+}
+
+.invitation-item {
+  display: grid;
+  gap: 3px;
+  padding: 10px 14px;
+  background: #f9f9fc;
+  border: 1px solid #f0edf1;
+  border-radius: 10px;
+}
+
+.invitation-item__main {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.invitation-item__email,
+.invitation-item__workspace {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: #111114;
+}
+
+.invitation-item__inviter {
+  font-size: 12px;
+  color: #8a8a96;
+}
+
+.invitation-item__actions {
+  display: flex;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.invitation-status {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 99px;
+  width: fit-content;
+}
+
+.invitation-status--pending   { background: #fff8e1; color: #f57f17; }
+.invitation-status--accepted  { background: #e8f5e9; color: #2e7d32; }
+.invitation-status--declined  { background: #fce4ec; color: #c62828; }
+.invitation-status--revoked   { background: #f5f5f5; color: #757575; }
+
+.my-invitations {
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid #f0edf1;
+}
+
+.my-invitations__title {
+  margin: 0 0 6px;
+  font-size: 11px;
+  font-weight: 800;
+  color: #ff5b8a;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
 .candidate-card {
   display: grid;
   gap: 3px;

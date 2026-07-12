@@ -12,5 +12,7 @@ public interface WorkspaceInvitationRepository extends JpaRepository<WorkspaceIn
 
     List<WorkspaceInvitation> findByWorkspaceIdOrderByIdDesc(Long workspaceId);
 
+    List<WorkspaceInvitation> findByInvitedEmailIgnoreCaseOrderByIdDesc(String invitedEmail);
+
     boolean existsByWorkspaceIdAndInvitedEmailAndStatus(Long workspaceId, String invitedEmail, WorkspaceInvitationStatus status);
 }

@@ -154,6 +154,7 @@ function App() {
   const [schedules, setSchedules] = useState([])
   const [members, setMembers] = useState([])
   const [invitations, setInvitations] = useState([])
+  const [myInvitations, setMyInvitations] = useState([])
   const [agentHistory, setAgentHistory] = useState([])
   const [recommendation, setRecommendation] = useState(null)
   const [selectedCustomer, setSelectedCustomer] = useState(null)
@@ -205,9 +206,13 @@ function App() {
   async function loadMe() {
     setLoading(true)
     try {
-      const data = await api('/api/me')
+      const [data, myInvites] = await Promise.all([
+        api('/api/me'),
+        api('/api/me/invitations').catch(() => []),
+      ])
       const nextWorkspaceId = data.currentWorkspaceId || data.workspaces?.[0]?.workspaceId || ''
       setMe(data)
+      setMyInvitations(myInvites)
       setWorkspaceId(nextWorkspaceId)
       setStatus('백엔드 세션과 연결되었습니다.')
     } catch {
@@ -240,11 +245,14 @@ function App() {
       setSchedules(scheduleData)
       setMembers(memberData)
 
-      if (canLoadInvitations) {
-        setInvitations(await api(`/api/workspaces/${nextWorkspaceId}/invitations`).catch(() => []))
-      } else {
-        setInvitations([])
-      }
+      const [inviteData, myInviteData] = await Promise.all([
+        canLoadInvitations
+          ? api(`/api/workspaces/${nextWorkspaceId}/invitations`).catch(() => [])
+          : Promise.resolve([]),
+        api('/api/me/invitations').catch(() => []),
+      ])
+      setInvitations(inviteData)
+      setMyInvitations(myInviteData)
       setStatus('워크스페이스 데이터를 불러왔습니다.')
     } catch (error) {
       setStatus(error.message)
@@ -394,6 +402,30 @@ function App() {
       setStatus('초대를 수락했습니다. 워크스페이스가 전환되었습니다.')
       clearInviteTokenFromUrl()
       await loadMe()
+    } catch (error) {
+      setStatus(error.message)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  async function respondToInvitation(token, action) {
+    setLoading(true)
+    try {
+      await api(`/api/workspaces/invitations/${token}/${action}`, { method: 'POST' })
+      if (action === 'accept') {
+        setStatus('초대를 수락했습니다.')
+        await loadMe()
+      } else {
+        setStatus('초대를 거절했습니다.')
+        setMyInvitations((prev) => prev.map((inv) =>
+          inv.inviteUrl?.includes(token)
+            ? { ...inv, status: 'DECLINED' }
+            : inv
+        ))
+        const updated = await api('/api/me/invitations').catch(() => [])
+        setMyInvitations(updated)
+      }
     } catch (error) {
       setStatus(error.message)
     } finally {
@@ -958,23 +990,24 @@ function App() {
             {activeTab === 'team' && (
             <section className="tab-grid" id="team">
               <Panel title="팀 멤버">
-                <ResultList
-                  items={members}
-                  emptyMessage="멤버 정보를 불러오지 못했거나 멤버가 없습니다."
-                  renderItem={(member) => (
-                    <>
-                      <strong>{member.name || member.email || `User ${member.userId}`}</strong>
-                      <span>{member.role}</span>
-                      {canManageTeam && (
-                        <div className="member-actions">
+                <ul className="member-list">
+                  {members.length === 0 && <p className="empty">멤버 정보를 불러오지 못했습니다.</p>}
+                  {members.map((member) => (
+                    <li key={member.userId} className="member-card">
+                      <div className="member-card__info">
+                        <strong>{member.userName || member.userEmail || `User ${member.userId}`}</strong>
+                        <span className={`role-badge role-badge--${member.role.toLowerCase()}`}>{roleLabel(member.role)}</span>
+                      </div>
+                      {member.userEmail && <span className="member-card__email">{member.userEmail}</span>}
+                      {canManageTeam && member.role !== 'OWNER' && (
+                        <div className="member-card__actions">
                           <select
                             defaultValue={member.role}
                             onChange={(event) => updateMemberRole(member.userId, event.target.value)}
                             disabled={loading}
                           >
-                            <option value="OWNER">OWNER</option>
-                            <option value="ADMIN">ADMIN</option>
-                            <option value="MEMBER">MEMBER</option>
+                            <option value="ADMIN">관리자</option>
+                            <option value="MEMBER">멤버</option>
                           </select>
                           <button
                             type="button"
@@ -983,7 +1016,7 @@ function App() {
                             onClick={() =>
                               deleteResource(
                                 `/api/workspaces/${workspaceId}/members/${member.userId}`,
-                                `${member.name || member.email || member.userId} 멤버를 제거할까요?`,
+                                `${member.userName || member.userEmail || member.userId} 멤버를 제거할까요?`,
                               )
                             }
                           >
@@ -991,13 +1024,13 @@ function App() {
                           </button>
                         </div>
                       )}
-                    </>
-                  )}
-                />
+                    </li>
+                  ))}
+                </ul>
               </Panel>
 
-              <Panel title="워크스페이스 초대">
-                {canManageTeam ? (
+              <Panel title="초대 관리">
+                {canManageTeam && (
                   <>
                     <form
                       className="stack-form"
@@ -1009,30 +1042,62 @@ function App() {
                       }
                     >
                       <TwoColumns>
-                        <input name="invitedEmail" type="email" placeholder="초대 이메일" required />
+                        <input name="invitedEmail" type="email" placeholder="초대할 이메일" required />
                         <select name="role" defaultValue="MEMBER">
-                          <option value="ADMIN">ADMIN</option>
-                          <option value="MEMBER">MEMBER</option>
+                          <option value="ADMIN">관리자</option>
+                          <option value="MEMBER">멤버</option>
                         </select>
                       </TwoColumns>
-                      <button type="submit" disabled={loading}>
-                        초대 생성
-                      </button>
+                      <button type="submit" disabled={loading}>초대 보내기</button>
                     </form>
-                    <ResultList
-                      items={invitations}
-                      emptyMessage="초대 내역이 없습니다."
-                      renderItem={(invitation) => (
-                        <>
-                          <strong>{invitation.invitedEmail}</strong>
-                          <span>{invitation.role} · {invitation.status}</span>
-                        </>
-                      )}
-                    />
+                    {invitations.length > 0 && (
+                      <ul className="invitation-list">
+                        {invitations.map((inv) => (
+                          <li key={inv.id} className="invitation-item">
+                            <div className="invitation-item__main">
+                              <span className="invitation-item__email">{inv.invitedEmail}</span>
+                              <span className={`role-badge role-badge--${inv.role.toLowerCase()}`}>{roleLabel(inv.role)}</span>
+                            </div>
+                            <span className={`invitation-status invitation-status--${inv.status.toLowerCase()}`}>
+                              {inv.status === 'PENDING' ? '대기 중' : inv.status === 'ACCEPTED' ? '수락됨' : inv.status === 'DECLINED' ? '거절됨' : '취소됨'}
+                            </span>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
                   </>
-                ) : (
-                  <p className="empty">OWNER 또는 ADMIN만 초대를 관리할 수 있습니다.</p>
                 )}
+                <div className="my-invitations">
+                  <p className="my-invitations__title">내게 온 초대</p>
+                  {myInvitations.length === 0 ? (
+                    <p className="empty">받은 초대가 없습니다.</p>
+                  ) : (
+                    <ul className="invitation-list">
+                      {myInvitations.map((inv) => {
+                        const token = inv.inviteUrl?.replace('/?inviteToken=', '')
+                        return (
+                          <li key={inv.id} className="invitation-item">
+                            <div className="invitation-item__main">
+                              <span className="invitation-item__workspace">{inv.workspaceName}</span>
+                              <span className={`role-badge role-badge--${inv.role.toLowerCase()}`}>{roleLabel(inv.role)}</span>
+                            </div>
+                            <span className="invitation-item__inviter">{inv.invitedByName}이 초대</span>
+                            {inv.status === 'PENDING' ? (
+                              <div className="invitation-item__actions">
+                                <button type="button" className="small-button" disabled={loading} onClick={() => respondToInvitation(token, 'accept')}>수락</button>
+                                <button type="button" className="small-button danger" disabled={loading} onClick={() => respondToInvitation(token, 'decline')}>거절</button>
+                              </div>
+                            ) : (
+                              <span className={`invitation-status invitation-status--${inv.status.toLowerCase()}`}>
+                                {inv.status === 'ACCEPTED' ? '수락됨' : inv.status === 'DECLINED' ? '거절됨' : '취소됨'}
+                              </span>
+                            )}
+                          </li>
+                        )
+                      })}
+                    </ul>
+                  )}
+                </div>
               </Panel>
             </section>
             )}

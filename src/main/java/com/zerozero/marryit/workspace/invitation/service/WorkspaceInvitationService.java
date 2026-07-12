@@ -88,9 +88,39 @@ public class WorkspaceInvitationService {
     }
 
     @Transactional(readOnly = true)
+    public List<WorkspaceInvitationResponse> findMyInvitations(Long userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("User not found."));
+        return workspaceInvitationRepository.findByInvitedEmailIgnoreCaseOrderByIdDesc(user.getEmail())
+                .stream()
+                .map(WorkspaceInvitationResponse::from)
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
     public WorkspaceInvitationResponse getByToken(String token) {
         return WorkspaceInvitationResponse.from(workspaceInvitationRepository.findByToken(token)
                 .orElseThrow(() -> new IllegalArgumentException("Invitation not found.")));
+    }
+
+    @Transactional
+    public WorkspaceInvitationResponse decline(String token, Long userId) {
+        WorkspaceInvitation invitation = workspaceInvitationRepository.findByToken(token)
+                .orElseThrow(() -> new IllegalArgumentException("Invitation not found."));
+
+        if (!invitation.isPending()) {
+            throw new IllegalStateException("Invitation is no longer active.");
+        }
+
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("User not found."));
+
+        if (!invitation.getInvitedEmail().equalsIgnoreCase(user.getEmail())) {
+            throw new SecurityException("This invitation was sent to a different email address.");
+        }
+
+        invitation.decline();
+        return WorkspaceInvitationResponse.from(invitation);
     }
 
     @Transactional
