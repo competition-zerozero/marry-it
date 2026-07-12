@@ -313,6 +313,37 @@ function App() {
     window.location.href = `${BACKEND_URL}/oauth2/authorization/google`
   }
 
+  if (!me) {
+    return (
+      <div className="landing">
+        <header className="landing-header">
+          <span className="landing-logo">marry-it</span>
+          <button type="button" className="login-google-btn" onClick={loginWithGoogle}>
+            <GoogleIcon />
+            Google로 시작하기
+          </button>
+        </header>
+
+        <section className="landing-hero">
+          <p className="eyebrow">Wedding Planner Suite</p>
+          <h1 className="landing-hero__title">웨딩 플래너의<br />모든 업무를 한 곳에서</h1>
+          <p className="landing-hero__sub">고객 관리부터 업체 검색, 일정 조율, AI 추천까지<br />marry-it 하나로 처리하세요.</p>
+          <button type="button" className="login-google-btn landing-hero__cta" onClick={loginWithGoogle}>
+            <GoogleIcon />
+            무료로 시작하기
+          </button>
+        </section>
+
+        <section className="landing-features">
+          <FeatureCard icon="👥" title="고객 관리" desc="신랑·신부 정보, 예산, 선호 스타일을 체계적으로 기록하고 관리합니다." />
+          <FeatureCard icon="🏢" title="업체 관리" desc="제휴 업체를 등록하고 카카오맵으로 새 업체를 빠르게 검색합니다." />
+          <FeatureCard icon="📅" title="일정 관리" desc="상담, 드레스 피팅, 웨딩 당일까지 모든 일정을 한눈에 확인합니다." />
+          <FeatureCard icon="✨" title="AI 추천" desc="급한 상황에도 AI가 조건에 맞는 업체를 즉시 추천해 드립니다." />
+        </section>
+      </div>
+    )
+  }
+
   return (
     <main className="app-shell">
       <aside className="sidebar">
@@ -341,44 +372,28 @@ function App() {
             <p className="eyebrow">현재 상태</p>
             <strong>{status}</strong>
           </div>
-          {me ? (
-            <div className="topbar-actions">
-              <select
-                aria-label="워크스페이스 선택"
-                value={workspaceId}
-                onChange={(event) => setWorkspaceId(event.target.value)}
-              >
-                {me.workspaces.map((workspace) => (
-                  <option key={workspace.workspaceId} value={workspace.workspaceId}>
-                    {workspace.name}
-                  </option>
-                ))}
-              </select>
-              <button type="button" onClick={() => loadWorkspaceData()} disabled={loading}>
-                새로고침
-              </button>
-              <a className="button secondary" href={`${BACKEND_URL}/logout`}>
-                로그아웃
-              </a>
-            </div>
-          ) : (
-            <button type="button" onClick={loginWithGoogle}>
-              Google 로그인
+          <div className="topbar-actions">
+            <select
+              aria-label="워크스페이스 선택"
+              value={workspaceId}
+              onChange={(event) => setWorkspaceId(event.target.value)}
+            >
+              {me.workspaces.map((workspace) => (
+                <option key={workspace.workspaceId} value={workspace.workspaceId}>
+                  {workspace.name}
+                </option>
+              ))}
+            </select>
+            <button type="button" onClick={() => loadWorkspaceData()} disabled={loading}>
+              새로고침
             </button>
-          )}
+            <a className="button secondary" href={`${BACKEND_URL}/logout`}>
+              로그아웃
+            </a>
+          </div>
         </header>
 
-        {!me ? (
-          <section className="login-panel">
-            <p className="eyebrow">OAuth Login</p>
-            <h2>Google 계정으로 로그인하면 개인 워크스페이스가 준비됩니다.</h2>
-            <p>React 화면은 Spring Boot 세션을 그대로 사용합니다.</p>
-            <button type="button" onClick={loginWithGoogle}>
-              Google로 시작하기
-            </button>
-          </section>
-        ) : (
-          <>
+        <>
             {activeTab === 'dashboard' && (
               <>
                 <section className="workspace-summary">
@@ -897,9 +912,29 @@ function App() {
             </section>
             )}
           </>
-        )}
       </section>
     </main>
+  )
+}
+
+function GoogleIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+      <path d="M17.64 9.205c0-.639-.057-1.252-.164-1.841H9v3.481h4.844a4.14 4.14 0 0 1-1.796 2.716v2.259h2.908c1.702-1.567 2.684-3.875 2.684-6.615Z" fill="#4285F4"/>
+      <path d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 0 0 9 18Z" fill="#34A853"/>
+      <path d="M3.964 10.71A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.71V4.958H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.042l3.007-2.332Z" fill="#FBBC05"/>
+      <path d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.958L3.964 6.29C4.672 4.163 6.656 3.58 9 3.58Z" fill="#EA4335"/>
+    </svg>
+  )
+}
+
+function FeatureCard({ icon, title, desc }) {
+  return (
+    <div className="feature-card">
+      <span className="feature-card__icon">{icon}</span>
+      <h3 className="feature-card__title">{title}</h3>
+      <p className="feature-card__desc">{desc}</p>
+    </div>
   )
 }
 
