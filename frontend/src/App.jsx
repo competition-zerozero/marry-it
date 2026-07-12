@@ -41,6 +41,11 @@ const customerSubTabs = [
   { id: 'customer-list', label: '고객 목록' },
 ]
 
+const vendorSubTabs = [
+  { id: 'vendor-add', label: '업체 등록' },
+  { id: 'vendor-list', label: '업체 목록' },
+]
+
 async function api(path, options = {}) {
   const response = await fetch(path, {
     credentials: 'include',
@@ -143,6 +148,7 @@ function App() {
   const [recommendation, setRecommendation] = useState(null)
   const [selectedKakaoPlace, setSelectedKakaoPlace] = useState(null)
   const [selectedCustomer, setSelectedCustomer] = useState(null)
+  const [selectedVendor, setSelectedVendor] = useState(null)
   const [editingCustomer, setEditingCustomer] = useState(null)
   const [editingVendor, setEditingVendor] = useState(null)
   const [editingSchedule, setEditingSchedule] = useState(null)
@@ -150,6 +156,7 @@ function App() {
   const [vendorExperiences, setVendorExperiences] = useState([])
   const [activeTab, setActiveTab] = useState('dashboard')
   const [customerSubTab, setCustomerSubTab] = useState('customer-add')
+  const [vendorSubTab, setVendorSubTab] = useState('vendor-add')
   const [status, setStatus] = useState('로그인 상태를 확인하고 있습니다.')
   const [loading, setLoading] = useState(true)
   const [inviteToken, setInviteToken] = useState(
@@ -445,6 +452,7 @@ function App() {
   }
 
   const activeCustomerTab = activeTab === 'customers' ? customerSubTab : null
+  const activeVendorTab = activeTab === 'vendors' ? vendorSubTab : null
 
   return (
     <main className="app-shell">
@@ -504,6 +512,23 @@ function App() {
                   type="button"
                   className={customerSubTab === sub.id ? 'active' : ''}
                   onClick={() => setCustomerSubTab(sub.id)}
+                >
+                  {sub.label}
+                </button>
+              ))}
+            </nav>
+          </aside>
+        )}
+        {activeTab === 'vendors' && (
+          <aside className="sub-sidebar">
+            <p className="sub-sidebar__title">업체</p>
+            <nav>
+              {vendorSubTabs.map((sub) => (
+                <button
+                  key={sub.id}
+                  type="button"
+                  className={vendorSubTab === sub.id ? 'active' : ''}
+                  onClick={() => setVendorSubTab(sub.id)}
                 >
                   {sub.label}
                 </button>
@@ -588,10 +613,8 @@ function App() {
             </section>
             )}
 
-            {(activeCustomerTab === 'customer-list' || activeTab === 'vendors') && (
+            {activeCustomerTab === 'customer-list' && (
             <section className="tab-grid">
-              {activeCustomerTab === 'customer-list' && (
-              <>
               <Panel title="고객 목록" id="customer-list">
                 <ManageList
                   items={customers}
@@ -646,10 +669,11 @@ function App() {
                   </div>
                 )}
               </Panel>
-              </>
-              )}
+            </section>
+            )}
 
-              {activeTab === 'vendors' && (
+            {activeVendorTab === 'vendor-add' && (
+            <section className="tab-grid">
               <Panel title="업체 등록" id="vendor-form">
                 <form
                   key={selectedKakaoPlace?.kakaoPlaceId || 'manual-vendor'}
@@ -690,7 +714,66 @@ function App() {
                   </button>
                 </form>
               </Panel>
-              )}
+            </section>
+            )}
+
+            {activeVendorTab === 'vendor-list' && (
+            <section className="tab-grid">
+              <Panel title="업체 목록" id="vendor-list">
+                <ManageList
+                  items={vendors}
+                  emptyMessage="등록된 업체가 없습니다."
+                  renderLabel={(vendor) => `${vendor.name} · ${vendor.category}${vendor.partnered ? ' · 제휴' : ''}`}
+                  onEdit={(vendor) => { setEditingVendor(vendor); setSelectedVendor(vendor) }}
+                  onDelete={(vendor) =>
+                    deleteResource(
+                      `/api/workspaces/${workspaceId}/vendors/${vendor.id}`,
+                      `${vendor.name} 업체를 삭제할까요?`,
+                    )
+                  }
+                  onSelect={(vendor) => { setSelectedVendor(vendor); setEditingVendor(null) }}
+                  selectedId={selectedVendor?.id}
+                />
+              </Panel>
+              <Panel title={selectedVendor ? selectedVendor.name : '업체 상세'} id="vendor-detail">
+                {selectedVendor && !editingVendor ? (
+                  <VendorDetailView
+                    vendor={selectedVendor}
+                    workspaceId={workspaceId}
+                    loading={loading}
+                    onEdit={(v) => setEditingVendor(v)}
+                    onDelete={(vendor) =>
+                      deleteResource(
+                        `/api/workspaces/${workspaceId}/vendors/${vendor.id}`,
+                        `${vendor.name} 업체를 삭제할까요?`,
+                      ).then(() => setSelectedVendor(null))
+                    }
+                    submitForm={submitForm}
+                  />
+                ) : editingVendor ? (
+                  <VendorEditForm
+                    vendor={editingVendor}
+                    loading={loading}
+                    onCancel={() => setEditingVendor(null)}
+                    onSubmit={(event) =>
+                      updateForm(
+                        event,
+                        `/api/workspaces/${workspaceId}/vendors/${editingVendor.id}`,
+                        vendorPayload,
+                        async () => {
+                          setEditingVendor(null)
+                          await loadWorkspaceData()
+                        },
+                      )
+                    }
+                  />
+                ) : (
+                  <div className="customer-detail__empty">
+                    <span className="customer-detail__empty-icon">🏢</span>
+                    <span>목록에서 업체를 선택하세요</span>
+                  </div>
+                )}
+              </Panel>
             </section>
             )}
 
@@ -759,43 +842,8 @@ function App() {
             )}
 
 
-            {(activeTab === 'vendors' || activeTab === 'schedules') && (
+            {activeTab === 'schedules' && (
             <section className="tab-grid">
-              {activeTab === 'vendors' && (
-              <Panel title="업체 상세 · 수정 · 삭제">
-                <ManageList
-                  items={vendors}
-                  emptyMessage="관리할 업체가 없습니다."
-                  renderLabel={(vendor) => `${vendor.id}. ${vendor.name} · ${vendor.category}`}
-                  onEdit={setEditingVendor}
-                  onDelete={(vendor) =>
-                    deleteResource(
-                      `/api/workspaces/${workspaceId}/vendors/${vendor.id}`,
-                      `${vendor.name} 업체를 삭제할까요?`,
-                    )
-                  }
-                />
-                {editingVendor && (
-                  <VendorEditForm
-                    vendor={editingVendor}
-                    loading={loading}
-                    onCancel={() => setEditingVendor(null)}
-                    onSubmit={(event) =>
-                      updateForm(
-                        event,
-                        `/api/workspaces/${workspaceId}/vendors/${editingVendor.id}`,
-                        vendorPayload,
-                        async () => {
-                          setEditingVendor(null)
-                          await loadWorkspaceData()
-                        },
-                      )
-                    }
-                  />
-                )}
-              </Panel>
-              )}
-
               {activeTab === 'schedules' && (
               <Panel title="일정 상세 · 수정 · 삭제">
                 <ManageList
@@ -833,51 +881,8 @@ function App() {
             </section>
             )}
 
-            {(activeTab === 'vendors' || activeTab === 'agent') && (
+            {activeTab === 'agent' && (
             <section className="tab-grid">
-              {activeTab === 'vendors' && (
-              <Panel title="업체 경험 · 노하우" id="experiences">
-                <form
-                  className="stack-form"
-                  onSubmit={(event) =>
-                    submitForm(
-                      event,
-                      `/api/workspaces/${workspaceId}/vendors/${selectedVendorId}/experiences`,
-                      (data) => ({ content: data.get('content') }),
-                      async () => loadVendorExperiences(selectedVendorId),
-                    )
-                  }
-                >
-                  <select
-                    value={selectedVendorId}
-                    onChange={(event) => loadVendorExperiences(event.target.value)}
-                    required
-                  >
-                    <option value="">업체 선택</option>
-                    {vendors.map((vendor) => (
-                      <option key={vendor.id} value={vendor.id}>
-                        {vendor.name}
-                      </option>
-                    ))}
-                  </select>
-                  <textarea name="content" placeholder="예: 급한 주문 대응이 빠르고 화이트톤 부케를 잘함" required />
-                  <button type="submit" disabled={loading || !selectedVendorId}>
-                    경험 저장
-                  </button>
-                </form>
-                <ResultList
-                  items={vendorExperiences}
-                  emptyMessage="선택한 업체의 경험이 없습니다."
-                  renderItem={(experience) => (
-                    <>
-                      <strong>{experience.plannerName}</strong>
-                      <span>{experience.content}</span>
-                    </>
-                  )}
-                />
-              </Panel>
-              )}
-
               {activeTab === 'agent' && (
               <Panel title="AI 추천 결과 상세">
                 {latestAgentRecommendation ? (
@@ -1335,6 +1340,97 @@ function CustomerEditForm({ customer, loading, onSubmit, onCancel }) {
         </button>
       </div>
     </form>
+  )
+}
+
+const categoryLabel = {
+  WEDDING_HALL: '웨딩홀',
+  STUDIO: '스튜디오',
+  DRESS: '드레스',
+  MAKEUP: '메이크업',
+  FLOWER: '플라워',
+  JEWELRY: '주얼리',
+  HANBOK: '한복',
+  RETURN_GIFT: '답례품',
+  PHOTO: '사진',
+  VIDEO: '영상',
+}
+
+function VendorDetailView({ vendor, workspaceId, loading, onEdit, onDelete, submitForm }) {
+  const [experiences, setExperiences] = useState([])
+  const [expLoading, setExpLoading] = useState(false)
+
+  useEffect(() => {
+    setExpLoading(true)
+    api(`/api/workspaces/${workspaceId}/vendors/${vendor.id}/experiences`)
+      .then(setExperiences)
+      .catch(() => setExperiences([]))
+      .finally(() => setExpLoading(false))
+  }, [vendor.id, workspaceId])
+
+  const fields = [
+    ['카테고리', categoryLabel[vendor.category] || vendor.category],
+    ['담당자', vendor.contactPerson],
+    ['전화번호', vendor.phone],
+    ['도로명 주소', vendor.roadAddress],
+    ['주소', vendor.address],
+    ['제휴 여부', vendor.partnered ? '제휴 업체' : null],
+    ['카카오 장소 ID', vendor.kakaoPlaceId],
+    ['카카오 URL', vendor.placeUrl],
+  ]
+
+  return (
+    <div className="customer-detail">
+      <div className="customer-detail__header">
+        <h4>{vendor.name}</h4>
+        <div className="customer-detail__actions">
+          <button type="button" className="small-button" onClick={() => onEdit(vendor)}>수정</button>
+          <button type="button" className="small-button danger" onClick={() => onDelete(vendor)}>삭제</button>
+        </div>
+      </div>
+      <dl className="customer-detail__fields">
+        {fields.filter(([, v]) => v != null && v !== '').map(([label, value]) => (
+          <div key={label} className="customer-detail__field">
+            <dt>{label}</dt>
+            <dd>{value}</dd>
+          </div>
+        ))}
+      </dl>
+      <div>
+        <p className="wedding-date-picker__label" style={{ marginBottom: 8 }}>경험 · 노하우</p>
+        <form
+          className="stack-form"
+          onSubmit={(event) =>
+            submitForm(
+              event,
+              `/api/workspaces/${workspaceId}/vendors/${vendor.id}/experiences`,
+              (data) => ({ content: data.get('content') }),
+              async () => {
+                const data = await api(`/api/workspaces/${workspaceId}/vendors/${vendor.id}/experiences`)
+                setExperiences(data)
+              },
+            )
+          }
+        >
+          <textarea name="content" placeholder="예: 급한 주문 대응이 빠르고 화이트톤 부케를 잘함" required />
+          <button type="submit" disabled={loading}>경험 저장</button>
+        </form>
+        {expLoading ? (
+          <p className="empty">불러오는 중…</p>
+        ) : (
+          <ResultList
+            items={experiences}
+            emptyMessage="등록된 경험이 없습니다."
+            renderItem={(experience) => (
+              <>
+                <strong>{experience.plannerName}</strong>
+                <span>{experience.content}</span>
+              </>
+            )}
+          />
+        )}
+      </div>
+    </div>
   )
 }
 
