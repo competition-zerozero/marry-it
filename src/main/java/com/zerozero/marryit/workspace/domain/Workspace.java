@@ -28,6 +28,10 @@ public class Workspace extends BaseTimeEntity {
         return new Workspace(ownerName + "의 Workspace");
     }
 
+    public static Workspace create(String name) {
+        return new Workspace(name);
+    }
+
     public Long getId() {
         return id;
     }

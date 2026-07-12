@@ -55,6 +55,37 @@ const agentSubTabs = [
   { id: 'agent-recommend', label: '업체 추천' },
 ]
 
+const teamSubTabs = [
+  { id: 'team-workspaces', label: '내 워크스페이스' },
+  { id: 'team-members', label: '멤버 관리' },
+  { id: 'team-invite', label: '초대' },
+]
+
+const categoryLabel = {
+  WEDDING_HALL: '웨딩홀',
+  STUDIO: '스튜디오',
+  DRESS: '드레스',
+  MAKEUP: '메이크업',
+  FLOWER: '플라워',
+  JEWELRY: '주얼리',
+  HANBOK: '한복',
+  RETURN_GIFT: '답례품',
+  PHOTO: '사진',
+  VIDEO: '영상',
+}
+
+const scheduleTypeLabel = {
+  CONSULTATION: '상담',
+  VENUE_TOUR: '예식장 투어',
+  DRESS_FITTING: '드레스 피팅',
+  STUDIO_SHOOT: '스튜디오 촬영',
+  MAKEUP: '메이크업',
+  WEDDING_DAY: '웨딩 당일',
+  VENDOR_VISIT: '업체 방문',
+  CONTRACT: '계약',
+  PERSONAL_TASK: '개인 업무',
+}
+
 async function api(path, options = {}) {
   const response = await fetch(path, {
     credentials: 'include',
@@ -155,6 +186,7 @@ function App() {
   const [members, setMembers] = useState([])
   const [invitations, setInvitations] = useState([])
   const [myInvitations, setMyInvitations] = useState([])
+  const [allSchedules, setAllSchedules] = useState([])
   const [agentHistory, setAgentHistory] = useState([])
   const [recommendation, setRecommendation] = useState(null)
   const [selectedCustomer, setSelectedCustomer] = useState(null)
@@ -170,6 +202,7 @@ function App() {
   const [scheduleSubTab, setScheduleSubTab] = useState('schedule-add')
   const [selectedSchedule, setSelectedSchedule] = useState(null)
   const [agentSubTab, setAgentSubTab] = useState('agent-chat')
+  const [teamSubTab, setTeamSubTab] = useState('team-members')
   const [status, setStatus] = useState('로그인 상태를 확인하고 있습니다.')
   const [loading, setLoading] = useState(true)
   const [inviteToken, setInviteToken] = useState(
@@ -206,13 +239,15 @@ function App() {
   async function loadMe() {
     setLoading(true)
     try {
-      const [data, myInvites] = await Promise.all([
+      const [data, myInvites, allSched] = await Promise.all([
         api('/api/me'),
         api('/api/me/invitations').catch(() => []),
+        api('/api/me/schedules').catch(() => []),
       ])
       const nextWorkspaceId = data.currentWorkspaceId || data.workspaces?.[0]?.workspaceId || ''
       setMe(data)
       setMyInvitations(myInvites)
+      setAllSchedules(allSched)
       setWorkspaceId(nextWorkspaceId)
       setStatus('백엔드 세션과 연결되었습니다.')
     } catch {
@@ -245,14 +280,16 @@ function App() {
       setSchedules(scheduleData)
       setMembers(memberData)
 
-      const [inviteData, myInviteData] = await Promise.all([
+      const [inviteData, myInviteData, allSched] = await Promise.all([
         canLoadInvitations
           ? api(`/api/workspaces/${nextWorkspaceId}/invitations`).catch(() => [])
           : Promise.resolve([]),
         api('/api/me/invitations').catch(() => []),
+        api('/api/me/schedules').catch(() => []),
       ])
       setInvitations(inviteData)
       setMyInvitations(myInviteData)
+      setAllSchedules(allSched)
       setStatus('워크스페이스 데이터를 불러왔습니다.')
     } catch (error) {
       setStatus(error.message)
@@ -482,6 +519,7 @@ function App() {
   const activeVendorTab = activeTab === 'vendors' ? vendorSubTab : null
   const activeScheduleTab = activeTab === 'schedules' ? scheduleSubTab : null
   const activeAgentTab = activeTab === 'agent' ? agentSubTab : null
+  const activeTeamTab = activeTab === 'team' ? teamSubTab : null
 
   return (
     <main className="app-shell">
@@ -507,7 +545,7 @@ function App() {
           >
             {me.workspaces.map((workspace) => (
               <option key={workspace.workspaceId} value={workspace.workspaceId}>
-                {workspace.name}
+                {workspace.workspaceName || workspace.name}
               </option>
             ))}
           </select>
@@ -529,6 +567,8 @@ function App() {
           onDismiss={clearInviteTokenFromUrl}
         />
       )}
+
+      <StatusBar status={status} loading={loading} />
 
       <div className="body-layout">
         {activeTab === 'customers' && (
@@ -599,6 +639,23 @@ function App() {
             </nav>
           </aside>
         )}
+        {activeTab === 'team' && (
+          <aside className="sub-sidebar">
+            <p className="sub-sidebar__title">팀</p>
+            <nav>
+              {teamSubTabs.map((sub) => (
+                <button
+                  key={sub.id}
+                  type="button"
+                  className={teamSubTab === sub.id ? 'active' : ''}
+                  onClick={() => setTeamSubTab(sub.id)}
+                >
+                  {sub.label}
+                </button>
+              ))}
+            </nav>
+          </aside>
+        )}
 
       <section className="content">
 
@@ -608,15 +665,21 @@ function App() {
                 <section className="workspace-summary">
                   <div>
                     <p className="eyebrow">Workspace</p>
-                    <h2>{currentWorkspace?.name || '워크스페이스'}</h2>
+                    <h2>{currentWorkspace?.workspaceName || currentWorkspace?.name || '워크스페이스'}</h2>
                     <p>역할: {currentWorkspace?.role || '-'}</p>
                   </div>
                   <div className="metric-grid">
                     <Metric label="고객" value={customers.length} />
                     <Metric label="업체" value={vendors.length} />
-                    <Metric label="일정" value={schedules.length} />
+                    <Metric label="이번 달 일정" value={allSchedules.filter(s => {
+                      const d = new Date(s.startsAt)
+                      const now = new Date()
+                      return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth()
+                    }).length} />
                   </div>
                 </section>
+
+                <CalendarPanel schedules={allSchedules} workspaces={me?.workspaces || []} />
 
                 <section className="data-grid">
                   <PreviewList
@@ -987,9 +1050,63 @@ function App() {
             </section>
             )}
 
-            {activeTab === 'team' && (
-            <section className="tab-grid" id="team">
-              <Panel title="팀 멤버">
+            {activeTeamTab === 'team-workspaces' && (
+            <section className="tab-grid" id="team-workspaces">
+              <Panel title="내 워크스페이스">
+                <ul className="workspace-list">
+                  {me.workspaces.map((ws) => (
+                    <li
+                      key={ws.workspaceId}
+                      className={`workspace-item${String(ws.workspaceId) === String(workspaceId) ? ' workspace-item--active' : ''}`}
+                    >
+                      <div className="workspace-item__info">
+                        <strong>{ws.workspaceName || ws.name}</strong>
+                        <span className={`role-badge role-badge--${ws.role.toLowerCase()}`}>{roleLabel(ws.role)}</span>
+                      </div>
+                      {String(ws.workspaceId) !== String(workspaceId) && (
+                        <button
+                          type="button"
+                          className="small-button"
+                          onClick={() => setWorkspaceId(ws.workspaceId)}
+                        >
+                          전환
+                        </button>
+                      )}
+                      {String(ws.workspaceId) === String(workspaceId) && (
+                        <span className="workspace-item__current">현재 워크스페이스</span>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              </Panel>
+
+              <Panel title="새 워크스페이스 만들기">
+                <p className="agent-mode-desc">새 워크스페이스를 만들면 독립된 고객·업체·일정 데이터를 관리할 수 있습니다.</p>
+                <form
+                  className="stack-form"
+                  onSubmit={(event) =>
+                    submitForm(
+                      event,
+                      '/api/workspaces',
+                      (data) => ({ name: data.get('name') }),
+                      async (result) => {
+                        await loadMe()
+                        setWorkspaceId(result.workspaceId)
+                        setActiveTab('dashboard')
+                      },
+                    )
+                  }
+                >
+                  <input name="name" placeholder="워크스페이스 이름 (예: 2024 웨딩팀)" required />
+                  <button type="submit" disabled={loading}>워크스페이스 만들기</button>
+                </form>
+              </Panel>
+            </section>
+            )}
+
+            {activeTeamTab === 'team-members' && (
+            <section className="tab-grid" id="team-members">
+              <Panel title={`팀 멤버 · ${currentWorkspace?.workspaceName || currentWorkspace?.name || '워크스페이스'}`}>
                 <ul className="member-list">
                   {members.length === 0 && <p className="empty">멤버 정보를 불러오지 못했습니다.</p>}
                   {members.map((member) => (
@@ -1028,76 +1145,82 @@ function App() {
                   ))}
                 </ul>
               </Panel>
+            </section>
+            )}
 
-              <Panel title="초대 관리">
-                {canManageTeam && (
-                  <>
-                    <form
-                      className="stack-form"
-                      onSubmit={(event) =>
-                        submitForm(event, `/api/workspaces/${workspaceId}/invitations`, (data) => ({
-                          invitedEmail: data.get('invitedEmail'),
-                          role: data.get('role'),
-                        }))
-                      }
-                    >
-                      <TwoColumns>
-                        <input name="invitedEmail" type="email" placeholder="초대할 이메일" required />
-                        <select name="role" defaultValue="MEMBER">
-                          <option value="ADMIN">관리자</option>
-                          <option value="MEMBER">멤버</option>
-                        </select>
-                      </TwoColumns>
-                      <button type="submit" disabled={loading}>초대 보내기</button>
-                    </form>
-                    {invitations.length > 0 && (
-                      <ul className="invitation-list">
-                        {invitations.map((inv) => (
-                          <li key={inv.id} className="invitation-item">
-                            <div className="invitation-item__main">
-                              <span className="invitation-item__email">{inv.invitedEmail}</span>
-                              <span className={`role-badge role-badge--${inv.role.toLowerCase()}`}>{roleLabel(inv.role)}</span>
-                            </div>
-                            <span className={`invitation-status invitation-status--${inv.status.toLowerCase()}`}>
-                              {inv.status === 'PENDING' ? '대기 중' : inv.status === 'ACCEPTED' ? '수락됨' : inv.status === 'DECLINED' ? '거절됨' : '취소됨'}
-                            </span>
-                          </li>
-                        ))}
-                      </ul>
-                    )}
-                  </>
-                )}
-                <div className="my-invitations">
-                  <p className="my-invitations__title">내게 온 초대</p>
-                  {myInvitations.length === 0 ? (
-                    <p className="empty">받은 초대가 없습니다.</p>
-                  ) : (
-                    <ul className="invitation-list">
-                      {myInvitations.map((inv) => {
-                        const token = inv.inviteUrl?.replace('/?inviteToken=', '')
-                        return (
-                          <li key={inv.id} className="invitation-item">
-                            <div className="invitation-item__main">
-                              <span className="invitation-item__workspace">{inv.workspaceName}</span>
-                              <span className={`role-badge role-badge--${inv.role.toLowerCase()}`}>{roleLabel(inv.role)}</span>
-                            </div>
-                            <span className="invitation-item__inviter">{inv.invitedByName}이 초대</span>
-                            {inv.status === 'PENDING' ? (
-                              <div className="invitation-item__actions">
-                                <button type="button" className="small-button" disabled={loading} onClick={() => respondToInvitation(token, 'accept')}>수락</button>
-                                <button type="button" className="small-button danger" disabled={loading} onClick={() => respondToInvitation(token, 'decline')}>거절</button>
-                              </div>
-                            ) : (
-                              <span className={`invitation-status invitation-status--${inv.status.toLowerCase()}`}>
-                                {inv.status === 'ACCEPTED' ? '수락됨' : inv.status === 'DECLINED' ? '거절됨' : '취소됨'}
-                              </span>
-                            )}
-                          </li>
-                        )
-                      })}
+            {activeTeamTab === 'team-invite' && (
+            <section className="tab-grid" id="team-invite">
+              {canManageTeam ? (
+                <Panel title={`멤버 초대 · ${currentWorkspace?.workspaceName || currentWorkspace?.name || '워크스페이스'}`}>
+                  <form
+                    className="stack-form"
+                    onSubmit={(event) =>
+                      submitForm(event, `/api/workspaces/${workspaceId}/invitations`, (data) => ({
+                        invitedEmail: data.get('invitedEmail'),
+                        role: data.get('role'),
+                      }))
+                    }
+                  >
+                    <TwoColumns>
+                      <input name="invitedEmail" type="email" placeholder="초대할 이메일" required />
+                      <select name="role" defaultValue="MEMBER">
+                        <option value="ADMIN">관리자</option>
+                        <option value="MEMBER">멤버</option>
+                      </select>
+                    </TwoColumns>
+                    <button type="submit" disabled={loading}>초대 보내기</button>
+                  </form>
+                  {invitations.length > 0 && (
+                    <ul className="invitation-list" style={{ marginTop: 16 }}>
+                      {invitations.map((inv) => (
+                        <li key={inv.id} className="invitation-item">
+                          <div className="invitation-item__main">
+                            <span className="invitation-item__email">{inv.invitedEmail}</span>
+                            <span className={`role-badge role-badge--${inv.role.toLowerCase()}`}>{roleLabel(inv.role)}</span>
+                          </div>
+                          <span className={`invitation-status invitation-status--${inv.status.toLowerCase()}`}>
+                            {inv.status === 'PENDING' ? '대기 중' : inv.status === 'ACCEPTED' ? '수락됨' : inv.status === 'DECLINED' ? '거절됨' : '취소됨'}
+                          </span>
+                        </li>
+                      ))}
                     </ul>
                   )}
-                </div>
+                </Panel>
+              ) : (
+                <Panel title="멤버 초대">
+                  <p className="empty">초대는 대표 또는 관리자만 보낼 수 있습니다.</p>
+                </Panel>
+              )}
+
+              <Panel title="내게 온 초대">
+                {myInvitations.length === 0 ? (
+                  <p className="empty">받은 초대가 없습니다.</p>
+                ) : (
+                  <ul className="invitation-list">
+                    {myInvitations.map((inv) => {
+                      const token = inv.inviteUrl?.replace('/?inviteToken=', '')
+                      return (
+                        <li key={inv.id} className="invitation-item">
+                          <div className="invitation-item__main">
+                            <span className="invitation-item__workspace">{inv.workspaceName}</span>
+                            <span className={`role-badge role-badge--${inv.role.toLowerCase()}`}>{roleLabel(inv.role)}</span>
+                          </div>
+                          <span className="invitation-item__inviter">{inv.invitedByName}이 초대</span>
+                          {inv.status === 'PENDING' ? (
+                            <div className="invitation-item__actions">
+                              <button type="button" className="small-button" disabled={loading} onClick={() => respondToInvitation(token, 'accept')}>수락</button>
+                              <button type="button" className="small-button danger" disabled={loading} onClick={() => respondToInvitation(token, 'decline')}>거절</button>
+                            </div>
+                          ) : (
+                            <span className={`invitation-status invitation-status--${inv.status.toLowerCase()}`}>
+                              {inv.status === 'ACCEPTED' ? '수락됨' : inv.status === 'DECLINED' ? '거절됨' : '취소됨'}
+                            </span>
+                          )}
+                        </li>
+                      )
+                    })}
+                  </ul>
+                )}
               </Panel>
             </section>
             )}
@@ -1105,6 +1228,151 @@ function App() {
       </section>
       </div>
     </main>
+  )
+}
+
+function StatusBar({ status, loading }) {
+  const isError = status && !status.includes('불러왔') && !status.includes('처리했') && !status.includes('수정했') && !status.includes('삭제했') && !status.includes('연결') && !status.includes('전환') && !status.includes('수락') && !status.includes('거절') && !status.includes('확인')
+  if (!status || status === '로그인 상태를 확인하고 있습니다.') return null
+  if (!isError && !loading) return null
+  return (
+    <div className={`status-bar${isError ? ' status-bar--error' : ''}`}>
+      {loading && <span className="status-bar__spinner" />}
+      <span>{status}</span>
+    </div>
+  )
+}
+
+const SCHEDULE_TYPE_COLORS = {
+  CONSULTATION:   '#ff5b8a',
+  VENUE_TOUR:     '#7c5cbf',
+  DRESS_FITTING:  '#e91e8c',
+  STUDIO_SHOOT:   '#0288d1',
+  MAKEUP:         '#f06292',
+  WEDDING_DAY:    '#c62828',
+  VENDOR_VISIT:   '#388e3c',
+  CONTRACT:       '#f57c00',
+  PERSONAL_TASK:  '#546e7a',
+}
+
+const WS_PALETTE = ['#ff5b8a','#7c5cbf','#0288d1','#388e3c','#f57c00','#546e7a','#c62828','#e91e8c']
+
+function CalendarPanel({ schedules, workspaces }) {
+  const today = new Date()
+  const [year, setYear] = useState(today.getFullYear())
+  const [month, setMonth] = useState(today.getMonth())
+  const [selectedDay, setSelectedDay] = useState(null)
+
+  const wsColorMap = useMemo(() => {
+    const map = {}
+    workspaces.forEach((ws, i) => { map[ws.workspaceId] = WS_PALETTE[i % WS_PALETTE.length] })
+    return map
+  }, [workspaces])
+
+  function prevMonth() {
+    if (month === 0) { setYear(y => y - 1); setMonth(11) }
+    else setMonth(m => m - 1)
+    setSelectedDay(null)
+  }
+  function nextMonth() {
+    if (month === 11) { setYear(y => y + 1); setMonth(0) }
+    else setMonth(m => m + 1)
+    setSelectedDay(null)
+  }
+
+  const firstDay = new Date(year, month, 1).getDay()
+  const daysInMonth = new Date(year, month + 1, 0).getDate()
+
+  const byDay = useMemo(() => {
+    const map = {}
+    schedules.forEach(s => {
+      const d = new Date(s.startsAt)
+      if (d.getFullYear() === year && d.getMonth() === month) {
+        const key = d.getDate()
+        if (!map[key]) map[key] = []
+        map[key].push(s)
+      }
+    })
+    return map
+  }, [schedules, year, month])
+
+  const daySchedules = selectedDay ? (byDay[selectedDay] || []) : []
+
+  const cells = []
+  for (let i = 0; i < firstDay; i++) cells.push(null)
+  for (let d = 1; d <= daysInMonth; d++) cells.push(d)
+
+  const isToday = (d) => d === today.getDate() && month === today.getMonth() && year === today.getFullYear()
+
+  return (
+    <article className="panel calendar-panel">
+      <div className="calendar-header">
+        <button type="button" className="cal-nav-btn" onClick={prevMonth}>‹</button>
+        <h3 className="calendar-title">{year}년 {month + 1}월 전체 일정</h3>
+        <button type="button" className="cal-nav-btn" onClick={nextMonth}>›</button>
+      </div>
+
+      <div className="calendar-grid">
+        {['일','월','화','수','목','금','토'].map(d => (
+          <div key={d} className={`cal-weekday${d === '일' ? ' cal-weekday--sun' : d === '토' ? ' cal-weekday--sat' : ''}`}>{d}</div>
+        ))}
+        {cells.map((d, i) => {
+          if (!d) return <div key={`empty-${i}`} className="cal-cell cal-cell--empty" />
+          const dots = byDay[d] || []
+          const colIdx = (firstDay + d - 1) % 7
+          const isSun = colIdx === 0
+          const isSat = colIdx === 6
+          return (
+            <div
+              key={d}
+              className={`cal-cell${isToday(d) ? ' cal-cell--today' : ''}${selectedDay === d ? ' cal-cell--selected' : ''}${isSun ? ' cal-cell--sun' : ''}${isSat ? ' cal-cell--sat' : ''}`}
+              onClick={() => setSelectedDay(selectedDay === d ? null : d)}
+            >
+              <span className="cal-day-num">{d}</span>
+              <div className="cal-dots">
+                {dots.slice(0, 3).map((s, si) => (
+                  <span
+                    key={si}
+                    className="cal-dot"
+                    style={{ background: wsColorMap[s.workspaceId] || SCHEDULE_TYPE_COLORS[s.scheduleType] || '#aaa' }}
+                  />
+                ))}
+                {dots.length > 3 && <span className="cal-dot-more">+{dots.length - 3}</span>}
+              </div>
+            </div>
+          )
+        })}
+      </div>
+
+      {selectedDay && (
+        <div className="cal-detail">
+          <p className="cal-detail__title">{month + 1}월 {selectedDay}일 일정 ({daySchedules.length}건)</p>
+          {daySchedules.length === 0 ? (
+            <p className="empty">일정이 없습니다.</p>
+          ) : (
+            <ul className="cal-detail__list">
+              {daySchedules.map(s => {
+                const ws = workspaces.find(w => String(w.workspaceId) === String(s.workspaceId))
+                const color = wsColorMap[s.workspaceId] || SCHEDULE_TYPE_COLORS[s.scheduleType] || '#aaa'
+                return (
+                  <li key={s.id} className="cal-event" style={{ borderLeftColor: color }}>
+                    <div className="cal-event__top">
+                      <strong className="cal-event__title">{s.title}</strong>
+                      <span className="cal-event__type">{scheduleTypeLabel[s.scheduleType] || s.scheduleType}</span>
+                    </div>
+                    <div className="cal-event__meta">
+                      <span>{new Date(s.startsAt).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })} – {new Date(s.endsAt).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}</span>
+                      {s.location && <span>· {s.location}</span>}
+                      {ws && <span className="cal-event__ws" style={{ color }}>{ws.workspaceName || ws.name}</span>}
+                    </div>
+                  </li>
+                )
+              })}
+            </ul>
+          )}
+        </div>
+      )}
+    </article>
   )
 }
 
@@ -1408,19 +1676,6 @@ function CustomerEditForm({ customer, loading, onSubmit, onCancel }) {
   )
 }
 
-const categoryLabel = {
-  WEDDING_HALL: '웨딩홀',
-  STUDIO: '스튜디오',
-  DRESS: '드레스',
-  MAKEUP: '메이크업',
-  FLOWER: '플라워',
-  JEWELRY: '주얼리',
-  HANBOK: '한복',
-  RETURN_GIFT: '답례품',
-  PHOTO: '사진',
-  VIDEO: '영상',
-}
-
 function VendorDetailView({ vendor, workspaceId, loading, onEdit, onDelete, submitForm }) {
   const [experiences, setExperiences] = useState([])
   const [expLoading, setExpLoading] = useState(false)
@@ -1623,18 +1878,6 @@ function VendorEditForm({ vendor, loading, onSubmit, onCancel }) {
       </div>
     </form>
   )
-}
-
-const scheduleTypeLabel = {
-  CONSULTATION: '상담',
-  VENUE_TOUR: '예식장 투어',
-  DRESS_FITTING: '드레스 피팅',
-  STUDIO_SHOOT: '스튜디오 촬영',
-  MAKEUP: '메이크업',
-  WEDDING_DAY: '웨딩 당일',
-  VENDOR_VISIT: '업체 방문',
-  CONTRACT: '계약',
-  PERSONAL_TASK: '개인 업무',
 }
 
 const targetTypeLabel = {

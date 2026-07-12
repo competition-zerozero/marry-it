@@ -34,4 +34,6 @@ public interface ScheduleRepository extends JpaRepository<Schedule, Long> {
     );
 
     java.util.Optional<Schedule> findByIdAndWorkspaceId(Long id, Long workspaceId);
+
+    List<Schedule> findByWorkspaceIdInOrderByStartsAtAsc(List<Long> workspaceIds);
 }
