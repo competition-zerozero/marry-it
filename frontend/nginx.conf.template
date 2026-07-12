@@ -1,0 +1,59 @@
+server {
+    listen 80;
+    server_name _;
+    root /usr/share/nginx/html;
+    index index.html;
+
+    # Docker's embedded DNS resolver. Resolving via a variable (instead of a
+    # literal upstream name in proxy_pass) makes nginx look this up per-request
+    # instead of once at config load — so it survives the backend container
+    # restarting/rescheduling with a new IP, and nginx doesn't refuse to start
+    # if the backend isn't resolvable yet.
+    resolver 127.0.0.11 valid=30s;
+    set $backend_upstream "http://${BACKEND_HOST}";
+
+    # NOTE: proxy_pass here intentionally has no path after the variable.
+    # nginx only does its location-prefix path rewrite when proxy_pass's URI
+    # is a static string; with a variable it forwards the original request
+    # URI untouched, so appending a path here would duplicate it
+    # (e.g. /oauth2/oauth2/authorization/google). No path = pass-through as-is,
+    # which is what we want since these paths match the backend's routes 1:1.
+
+    # Same paths the Vite dev server proxies locally (see vite.config.js) —
+    # keeps prod behavior identical to local dev without needing CORS.
+    location /api/ {
+        proxy_pass $backend_upstream;
+        proxy_set_header Host $http_host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    location /oauth2/ {
+        proxy_pass $backend_upstream;
+        proxy_set_header Host $http_host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    location /login/ {
+        proxy_pass $backend_upstream;
+        proxy_set_header Host $http_host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    location = /logout {
+        proxy_pass $backend_upstream;
+        proxy_set_header Host $http_host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    location / {
+        try_files $uri /index.html;
+    }
+}

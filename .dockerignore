@@ -1,0 +1,13 @@
+.git
+.gradle
+build
+frontend
+.idea
+*.iml
+HELP.md
+docs
+.env
+.env.*
+!.env.example
+src/main/resources/application-local.properties
+src/main/resources/application-local.yml

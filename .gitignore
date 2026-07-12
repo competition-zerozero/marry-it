@@ -49,4 +49,6 @@ src/main/resources/application-local.yml
 src/main/resources/application-secret.properties
 src/main/resources/application-secret.yml
 
+### Docker ###
+docker-compose.override.yml
 .DS_Store

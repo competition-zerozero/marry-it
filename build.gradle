@@ -41,6 +41,10 @@ tasks.named('test') {
     useJUnitPlatform()
 }
 
+tasks.named('jar') {
+    enabled = false
+}
+
 tasks.named('bootRun') {
     args '--spring.profiles.active=local'
 }
