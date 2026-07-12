@@ -30,7 +30,6 @@ const tabs = [
   { id: 'dashboard', label: '대시보드' },
   { id: 'customers', label: '고객' },
   { id: 'vendors', label: '업체' },
-  { id: 'kakao', label: '카카오 검색' },
   { id: 'schedules', label: '일정' },
   { id: 'agent', label: 'AI' },
   { id: 'team', label: '팀' },
@@ -44,6 +43,11 @@ const customerSubTabs = [
 const vendorSubTabs = [
   { id: 'vendor-add', label: '업체 등록' },
   { id: 'vendor-list', label: '업체 목록' },
+]
+
+const scheduleSubTabs = [
+  { id: 'schedule-add', label: '일정 등록' },
+  { id: 'schedule-list', label: '일정 목록' },
 ]
 
 async function api(path, options = {}) {
@@ -145,10 +149,8 @@ function App() {
   const [schedules, setSchedules] = useState([])
   const [members, setMembers] = useState([])
   const [invitations, setInvitations] = useState([])
-  const [kakaoResults, setKakaoResults] = useState([])
   const [agentHistory, setAgentHistory] = useState([])
   const [recommendation, setRecommendation] = useState(null)
-  const [selectedKakaoPlace, setSelectedKakaoPlace] = useState(null)
   const [selectedCustomer, setSelectedCustomer] = useState(null)
   const [selectedVendor, setSelectedVendor] = useState(null)
   const [editingCustomer, setEditingCustomer] = useState(null)
@@ -159,6 +161,8 @@ function App() {
   const [activeTab, setActiveTab] = useState('dashboard')
   const [customerSubTab, setCustomerSubTab] = useState('customer-add')
   const [vendorSubTab, setVendorSubTab] = useState('vendor-add')
+  const [scheduleSubTab, setScheduleSubTab] = useState('schedule-add')
+  const [selectedSchedule, setSelectedSchedule] = useState(null)
   const [status, setStatus] = useState('로그인 상태를 확인하고 있습니다.')
   const [loading, setLoading] = useState(true)
   const [inviteToken, setInviteToken] = useState(
@@ -334,23 +338,6 @@ function App() {
     }
   }
 
-  async function searchKakao(event) {
-    event.preventDefault()
-    const query = new FormData(event.currentTarget).get('query')
-    setLoading(true)
-    try {
-      const results = await api(
-        `/api/workspaces/${workspaceId}/external/kakao/places?query=${encodeURIComponent(query)}`,
-      )
-      setKakaoResults(results)
-      setStatus('카카오 장소 검색 결과를 불러왔습니다.')
-    } catch (error) {
-      setStatus(error.message)
-    } finally {
-      setLoading(false)
-    }
-  }
-
   async function submitAgentMessage(event) {
     event.preventDefault()
     const form = event.currentTarget
@@ -455,6 +442,7 @@ function App() {
 
   const activeCustomerTab = activeTab === 'customers' ? customerSubTab : null
   const activeVendorTab = activeTab === 'vendors' ? vendorSubTab : null
+  const activeScheduleTab = activeTab === 'schedules' ? scheduleSubTab : null
 
   return (
     <main className="app-shell">
@@ -531,6 +519,23 @@ function App() {
                   type="button"
                   className={vendorSubTab === sub.id ? 'active' : ''}
                   onClick={() => setVendorSubTab(sub.id)}
+                >
+                  {sub.label}
+                </button>
+              ))}
+            </nav>
+          </aside>
+        )}
+        {activeTab === 'schedules' && (
+          <aside className="sub-sidebar">
+            <p className="sub-sidebar__title">일정</p>
+            <nav>
+              {scheduleSubTabs.map((sub) => (
+                <button
+                  key={sub.id}
+                  type="button"
+                  className={scheduleSubTab === sub.id ? 'active' : ''}
+                  onClick={() => setScheduleSubTab(sub.id)}
                 >
                   {sub.label}
                 </button>
@@ -748,90 +753,58 @@ function App() {
             </section>
             )}
 
-            {(activeTab === 'kakao' || activeTab === 'schedules') && (
+            {activeScheduleTab === 'schedule-add' && (
             <section className="tab-grid">
-              {activeTab === 'kakao' && (
-              <Panel title="카카오맵 업체 검색" id="kakao">
-                <form className="inline-form" onSubmit={searchKakao}>
-                  <input name="query" placeholder="예: 강남 플라워, 청담 드레스" required />
-                  <button type="submit" disabled={loading}>
-                    검색
-                  </button>
-                </form>
-                <ResultList
-                  items={kakaoResults}
-                  emptyMessage="검색 결과가 없습니다."
-                  renderItem={(place) => (
-                    <>
-                      <strong>{place.name}</strong>
-                      <span>{place.roadAddress || place.address}</span>
-                      <button type="button" onClick={() => setSelectedKakaoPlace(place)}>
-                        업체 폼에 채우기
-                      </button>
-                    </>
-                  )}
-                />
-              </Panel>
-              )}
-
-              {activeTab === 'schedules' && (
               <Panel title="일정 등록" id="schedules">
-                <form
-                  className="stack-form"
+                <ScheduleAddForm
+                  customers={customers}
+                  vendors={vendors}
+                  loading={loading}
                   onSubmit={(event) =>
                     submitForm(event, `/api/workspaces/${workspaceId}/schedules`, schedulePayload)
                   }
-                >
-                  <TwoColumns>
-                    <select name="targetType">
-                      {targetTypes.map((type) => (
-                        <option key={type} value={type}>
-                          {type}
-                        </option>
-                      ))}
-                    </select>
-                    <input name="targetId" type="number" min="1" placeholder="대상 ID" required />
-                    <select name="scheduleType">
-                      {scheduleTypes.map((type) => (
-                        <option key={type} value={type}>
-                          {type}
-                        </option>
-                      ))}
-                    </select>
-                    <input name="title" placeholder="일정명" required />
-                    <input name="startsAt" type="datetime-local" required />
-                    <input name="endsAt" type="datetime-local" required />
-                  </TwoColumns>
-                  <input name="location" placeholder="장소" />
-                  <button type="submit" disabled={loading}>
-                    일정 저장
-                  </button>
-                </form>
+                />
               </Panel>
-              )}
             </section>
             )}
 
-
-            {activeTab === 'schedules' && (
+            {activeScheduleTab === 'schedule-list' && (
             <section className="tab-grid">
-              {activeTab === 'schedules' && (
-              <Panel title="일정 상세 · 수정 · 삭제">
+              <Panel title="일정 목록" id="schedule-list">
                 <ManageList
                   items={schedules}
-                  emptyMessage="관리할 일정이 없습니다."
-                  renderLabel={(schedule) => `${schedule.id}. ${schedule.title} · ${schedule.startsAt}`}
-                  onEdit={setEditingSchedule}
+                  emptyMessage="등록된 일정이 없습니다."
+                  renderLabel={(schedule) => `${schedule.title} · ${schedule.startsAt?.slice(0, 16)}`}
+                  onEdit={(schedule) => { setEditingSchedule(schedule); setSelectedSchedule(schedule) }}
                   onDelete={(schedule) =>
                     deleteResource(
                       `/api/workspaces/${workspaceId}/schedules/${schedule.id}`,
                       `${schedule.title} 일정을 삭제할까요?`,
                     )
                   }
+                  onSelect={(schedule) => { setSelectedSchedule(schedule); setEditingSchedule(null) }}
+                  selectedId={selectedSchedule?.id}
                 />
-                {editingSchedule && (
+              </Panel>
+              <Panel title={selectedSchedule ? selectedSchedule.title : '일정 상세'} id="schedule-detail">
+                {selectedSchedule && !editingSchedule ? (
+                  <ScheduleDetailView
+                    schedule={selectedSchedule}
+                    customers={customers}
+                    vendors={vendors}
+                    onEdit={(s) => setEditingSchedule(s)}
+                    onDelete={(schedule) =>
+                      deleteResource(
+                        `/api/workspaces/${workspaceId}/schedules/${schedule.id}`,
+                        `${schedule.title} 일정을 삭제할까요?`,
+                      ).then(() => setSelectedSchedule(null))
+                    }
+                  />
+                ) : editingSchedule ? (
                   <ScheduleEditForm
                     schedule={editingSchedule}
+                    customers={customers}
+                    vendors={vendors}
                     loading={loading}
                     onCancel={() => setEditingSchedule(null)}
                     onSubmit={(event) =>
@@ -846,9 +819,13 @@ function App() {
                       )
                     }
                   />
+                ) : (
+                  <div className="customer-detail__empty">
+                    <span className="customer-detail__empty-icon">📅</span>
+                    <span>목록에서 일정을 선택하세요</span>
+                  </div>
                 )}
               </Panel>
-              )}
             </section>
             )}
 
@@ -1531,23 +1508,120 @@ function VendorEditForm({ vendor, loading, onSubmit, onCancel }) {
   )
 }
 
-function ScheduleEditForm({ schedule, loading, onSubmit, onCancel }) {
+const scheduleTypeLabel = {
+  CONSULTATION: '상담',
+  VENUE_TOUR: '예식장 투어',
+  DRESS_FITTING: '드레스 피팅',
+  STUDIO_SHOOT: '스튜디오 촬영',
+  MAKEUP: '메이크업',
+  WEDDING_DAY: '웨딩 당일',
+  VENDOR_VISIT: '업체 방문',
+  CONTRACT: '계약',
+  PERSONAL_TASK: '개인 업무',
+}
+
+const targetTypeLabel = {
+  CUSTOMER: '고객',
+  VENDOR: '업체',
+  PLANNER: '플래너',
+}
+
+function TargetSelect({ customers, vendors, defaultType, defaultId }) {
+  const [type, setType] = useState(defaultType || 'CUSTOMER')
+
+  const options = type === 'CUSTOMER'
+    ? customers.map((c) => ({ value: c.id, label: `${c.groomName} & ${c.brideName}` }))
+    : type === 'VENDOR'
+    ? vendors.map((v) => ({ value: v.id, label: v.name }))
+    : []
+
   return (
-    <form key={schedule.id} className="stack-form edit-form" onSubmit={onSubmit}>
-      <TwoColumns>
-        <select name="targetType" defaultValue={schedule.targetType}>
-          {targetTypes.map((type) => (
-            <option key={type} value={type}>
-              {type}
-            </option>
+    <TwoColumns>
+      <select name="targetType" value={type} onChange={(e) => setType(e.target.value)}>
+        {targetTypes.map((t) => (
+          <option key={t} value={t}>{targetTypeLabel[t] || t}</option>
+        ))}
+      </select>
+      {type === 'PLANNER' ? (
+        <input name="targetId" type="number" min="1" placeholder="플래너 ID" defaultValue={defaultId || ''} required />
+      ) : (
+        <select name="targetId" defaultValue={defaultId || ''} required>
+          <option value="">선택하세요</option>
+          {options.map((o) => (
+            <option key={o.value} value={o.value}>{o.label}</option>
           ))}
         </select>
-        <input name="targetId" type="number" min="1" placeholder="대상 ID" defaultValue={schedule.targetId} required />
+      )}
+    </TwoColumns>
+  )
+}
+
+function ScheduleAddForm({ customers, vendors, loading, onSubmit }) {
+  return (
+    <form className="stack-form" onSubmit={onSubmit}>
+      <TargetSelect customers={customers} vendors={vendors} />
+      <TwoColumns>
+        <select name="scheduleType">
+          {scheduleTypes.map((type) => (
+            <option key={type} value={type}>{scheduleTypeLabel[type] || type}</option>
+          ))}
+        </select>
+        <input name="title" placeholder="일정명" required />
+        <input name="startsAt" type="datetime-local" required />
+        <input name="endsAt" type="datetime-local" required />
+      </TwoColumns>
+      <input name="location" placeholder="장소" />
+      <button type="submit" disabled={loading}>일정 저장</button>
+    </form>
+  )
+}
+
+function ScheduleDetailView({ schedule, customers, vendors, onEdit, onDelete }) {
+  const targetName = schedule.targetType === 'CUSTOMER'
+    ? customers.find((c) => c.id === schedule.targetId)
+      ? `${customers.find((c) => c.id === schedule.targetId).groomName} & ${customers.find((c) => c.id === schedule.targetId).brideName}`
+      : `고객 #${schedule.targetId}`
+    : schedule.targetType === 'VENDOR'
+    ? vendors.find((v) => v.id === schedule.targetId)?.name || `업체 #${schedule.targetId}`
+    : `플래너 #${schedule.targetId}`
+
+  const fields = [
+    ['대상', `${targetTypeLabel[schedule.targetType] || schedule.targetType} · ${targetName}`],
+    ['일정 유형', scheduleTypeLabel[schedule.scheduleType] || schedule.scheduleType],
+    ['시작', schedule.startsAt?.slice(0, 16).replace('T', ' ')],
+    ['종료', schedule.endsAt?.slice(0, 16).replace('T', ' ')],
+    ['장소', schedule.location],
+  ]
+
+  return (
+    <div className="customer-detail">
+      <div className="customer-detail__header">
+        <h4>{schedule.title}</h4>
+        <div className="customer-detail__actions">
+          <button type="button" className="small-button" onClick={() => onEdit(schedule)}>수정</button>
+          <button type="button" className="small-button danger" onClick={() => onDelete(schedule)}>삭제</button>
+        </div>
+      </div>
+      <dl className="customer-detail__fields">
+        {fields.filter(([, v]) => v != null && v !== '').map(([label, value]) => (
+          <div key={label} className="customer-detail__field">
+            <dt>{label}</dt>
+            <dd>{value}</dd>
+          </div>
+        ))}
+      </dl>
+    </div>
+  )
+}
+
+function ScheduleEditForm({ schedule, customers, vendors, loading, onSubmit, onCancel }) {
+  return (
+    <form key={schedule.id} className="stack-form edit-form" onSubmit={onSubmit}>
+      <TargetSelect customers={customers} vendors={vendors} defaultType={schedule.targetType} defaultId={schedule.targetId} />
+      <TwoColumns>
         <select name="scheduleType" defaultValue={schedule.scheduleType}>
           {scheduleTypes.map((type) => (
-            <option key={type} value={type}>
-              {type}
-            </option>
+            <option key={type} value={type}>{scheduleTypeLabel[type] || type}</option>
           ))}
         </select>
         <input name="title" placeholder="일정명" defaultValue={schedule.title || ''} required />
@@ -1556,12 +1630,8 @@ function ScheduleEditForm({ schedule, loading, onSubmit, onCancel }) {
       </TwoColumns>
       <input name="location" placeholder="장소" defaultValue={schedule.location || ''} />
       <div className="action-row">
-        <button type="submit" disabled={loading}>
-          수정 저장
-        </button>
-        <button type="button" className="secondary-button" onClick={onCancel}>
-          취소
-        </button>
+        <button type="submit" disabled={loading}>수정 저장</button>
+        <button type="button" className="secondary-button" onClick={onCancel}>취소</button>
       </div>
     </form>
   )
