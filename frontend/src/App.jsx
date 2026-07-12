@@ -108,9 +108,10 @@ function customerPayload(data) {
 }
 
 function vendorPayload(data, form) {
+  const name = data.get('name') || ''
   return {
-    kakaoPlaceId: data.get('kakaoPlaceId'),
-    name: data.get('name'),
+    kakaoPlaceId: data.get('kakaoPlaceId') || `manual-${name}`,
+    name,
     category: data.get('category'),
     address: data.get('address'),
     roadAddress: data.get('roadAddress'),
@@ -675,44 +676,13 @@ function App() {
             {activeVendorTab === 'vendor-add' && (
             <section className="tab-grid">
               <Panel title="업체 등록" id="vendor-form">
-                <form
-                  key={selectedKakaoPlace?.kakaoPlaceId || 'manual-vendor'}
-                  className="stack-form"
+                <VendorAddForm
+                  workspaceId={workspaceId}
+                  loading={loading}
                   onSubmit={(event) =>
                     submitForm(event, `/api/workspaces/${workspaceId}/vendors`, vendorPayload)
                   }
-                >
-                  <TwoColumns>
-                    <input
-                      name="kakaoPlaceId"
-                      placeholder="카카오 장소 ID"
-                      defaultValue={selectedKakaoPlace?.kakaoPlaceId || ''}
-                      required
-                    />
-                    <input name="name" placeholder="업체명" defaultValue={selectedKakaoPlace?.name || ''} required />
-                    <select name="category" defaultValue="WEDDING_HALL">
-                      {categories.map((category) => (
-                        <option key={category} value={category}>
-                          {category}
-                        </option>
-                      ))}
-                    </select>
-                    <input name="contactPerson" placeholder="담당자" />
-                    <input name="phone" placeholder="전화번호" defaultValue={selectedKakaoPlace?.phone || ''} />
-                    <input name="roadAddress" placeholder="도로명 주소" defaultValue={selectedKakaoPlace?.roadAddress || ''} />
-                    <input name="address" placeholder="주소" defaultValue={selectedKakaoPlace?.address || ''} />
-                    <input name="placeUrl" placeholder="카카오 장소 URL" defaultValue={selectedKakaoPlace?.placeUrl || ''} />
-                    <input name="latitude" placeholder="위도" defaultValue={selectedKakaoPlace?.latitude || ''} />
-                    <input name="longitude" placeholder="경도" defaultValue={selectedKakaoPlace?.longitude || ''} />
-                  </TwoColumns>
-                  <label className="check-row">
-                    <input name="partnered" type="checkbox" />
-                    제휴 업체
-                  </label>
-                  <button type="submit" disabled={loading}>
-                    업체 저장
-                  </button>
-                </form>
+                />
               </Panel>
             </section>
             )}
@@ -1430,6 +1400,92 @@ function VendorDetailView({ vendor, workspaceId, loading, onEdit, onDelete, subm
           />
         )}
       </div>
+    </div>
+  )
+}
+
+function VendorAddForm({ workspaceId, loading, onSubmit }) {
+  const [query, setQuery] = useState('')
+  const [results, setResults] = useState([])
+  const [searching, setSearching] = useState(false)
+  const [place, setPlace] = useState(null)
+
+  async function handleSearch(event) {
+    event.preventDefault()
+    if (!query.trim()) return
+    setSearching(true)
+    try {
+      const data = await api(
+        `/api/workspaces/${workspaceId}/external/kakao/places?query=${encodeURIComponent(query)}`,
+      )
+      setResults(data)
+    } catch {
+      setResults([])
+    } finally {
+      setSearching(false)
+    }
+  }
+
+  function selectPlace(p) {
+    setPlace(p)
+    setResults([])
+  }
+
+  return (
+    <div className="vendor-add-form">
+      <div className="vendor-search-box">
+        <p className="wedding-date-picker__label">카카오맵으로 검색 <span className="optional-hint">(선택)</span></p>
+        <form className="inline-form" onSubmit={handleSearch}>
+          <input
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="예: 강남 웨딩홀, 청담 드레스"
+          />
+          <button type="submit" disabled={searching}>검색</button>
+        </form>
+        {results.length > 0 && (
+          <ul className="kakao-result-list">
+            {results.map((r) => (
+              <li key={r.kakaoPlaceId}>
+                <button type="button" className="kakao-result-item" onClick={() => selectPlace(r)}>
+                  <strong>{r.name}</strong>
+                  <span>{r.roadAddress || r.address}</span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+        {place && (
+          <div className="kakao-selected-badge">
+            <span>선택됨: <strong>{place.name}</strong></span>
+            <button type="button" className="small-button" onClick={() => setPlace(null)}>해제</button>
+          </div>
+        )}
+      </div>
+
+      <form key={place?.kakaoPlaceId || 'manual'} className="stack-form" onSubmit={onSubmit}>
+        <TwoColumns>
+          <input name="name" placeholder="업체명" defaultValue={place?.name || ''} required />
+          <select name="category" defaultValue="WEDDING_HALL">
+            {categories.map((c) => (
+              <option key={c} value={c}>{categoryLabel[c] || c}</option>
+            ))}
+          </select>
+          <input name="contactPerson" placeholder="담당자" />
+          <input name="phone" placeholder="전화번호" defaultValue={place?.phone || ''} />
+          <input name="roadAddress" placeholder="도로명 주소" defaultValue={place?.roadAddress || ''} />
+          <input name="address" placeholder="주소" defaultValue={place?.address || ''} />
+        </TwoColumns>
+        <input name="kakaoPlaceId" type="hidden" defaultValue={place?.kakaoPlaceId || ''} />
+        <input name="placeUrl" type="hidden" defaultValue={place?.placeUrl || ''} />
+        <input name="latitude" type="hidden" defaultValue={place?.latitude || ''} />
+        <input name="longitude" type="hidden" defaultValue={place?.longitude || ''} />
+        <label className="check-row">
+          <input name="partnered" type="checkbox" />
+          제휴 업체
+        </label>
+        <button type="submit" disabled={loading}>업체 저장</button>
+      </form>
     </div>
   )
 }
