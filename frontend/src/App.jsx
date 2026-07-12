@@ -31,7 +31,7 @@ const tabs = [
   { id: 'customers', label: '고객' },
   { id: 'vendors', label: '업체' },
   { id: 'schedules', label: '일정' },
-  { id: 'agent', label: 'AI' },
+  { id: 'agent', label: 'AI 추천' },
   { id: 'team', label: '팀' },
 ]
 
@@ -48,6 +48,11 @@ const vendorSubTabs = [
 const scheduleSubTabs = [
   { id: 'schedule-add', label: '일정 등록' },
   { id: 'schedule-list', label: '일정 목록' },
+]
+
+const agentSubTabs = [
+  { id: 'agent-chat', label: 'AI 대화' },
+  { id: 'agent-recommend', label: '업체 추천' },
 ]
 
 async function api(path, options = {}) {
@@ -163,6 +168,7 @@ function App() {
   const [vendorSubTab, setVendorSubTab] = useState('vendor-add')
   const [scheduleSubTab, setScheduleSubTab] = useState('schedule-add')
   const [selectedSchedule, setSelectedSchedule] = useState(null)
+  const [agentSubTab, setAgentSubTab] = useState('agent-chat')
   const [status, setStatus] = useState('로그인 상태를 확인하고 있습니다.')
   const [loading, setLoading] = useState(true)
   const [inviteToken, setInviteToken] = useState(
@@ -443,6 +449,7 @@ function App() {
   const activeCustomerTab = activeTab === 'customers' ? customerSubTab : null
   const activeVendorTab = activeTab === 'vendors' ? vendorSubTab : null
   const activeScheduleTab = activeTab === 'schedules' ? scheduleSubTab : null
+  const activeAgentTab = activeTab === 'agent' ? agentSubTab : null
 
   return (
     <main className="app-shell">
@@ -536,6 +543,23 @@ function App() {
                   type="button"
                   className={scheduleSubTab === sub.id ? 'active' : ''}
                   onClick={() => setScheduleSubTab(sub.id)}
+                >
+                  {sub.label}
+                </button>
+              ))}
+            </nav>
+          </aside>
+        )}
+        {activeTab === 'agent' && (
+          <aside className="sub-sidebar">
+            <p className="sub-sidebar__title">AI 추천</p>
+            <nav>
+              {agentSubTabs.map((sub) => (
+                <button
+                  key={sub.id}
+                  type="button"
+                  className={agentSubTab === sub.id ? 'active' : ''}
+                  onClick={() => setAgentSubTab(sub.id)}
                 >
                   {sub.label}
                 </button>
@@ -638,6 +662,7 @@ function App() {
                   }
                   onSelect={(customer) => { setSelectedCustomer(customer); setEditingCustomer(null) }}
                   selectedId={selectedCustomer?.id}
+                  searchable
                 />
               </Panel>
               <Panel title={selectedCustomer ? `${selectedCustomer.groomName} & ${selectedCustomer.brideName}` : '고객 상세'} id="customer-detail">
@@ -699,7 +724,7 @@ function App() {
                 <ManageList
                   items={vendors}
                   emptyMessage="등록된 업체가 없습니다."
-                  renderLabel={(vendor) => `${vendor.name} · ${vendor.category}${vendor.partnered ? ' · 제휴' : ''}`}
+                  renderLabel={(vendor) => `${vendor.name} · ${categoryLabel[vendor.category] || vendor.category}${vendor.partnered ? ' · 제휴' : ''}`}
                   onEdit={(vendor) => { setEditingVendor(vendor); setSelectedVendor(vendor) }}
                   onDelete={(vendor) =>
                     deleteResource(
@@ -709,6 +734,7 @@ function App() {
                   }
                   onSelect={(vendor) => { setSelectedVendor(vendor); setEditingVendor(null) }}
                   selectedId={selectedVendor?.id}
+                  searchable
                 />
               </Panel>
               <Panel title={selectedVendor ? selectedVendor.name : '업체 상세'} id="vendor-detail">
@@ -829,23 +855,13 @@ function App() {
             </section>
             )}
 
-            {activeTab === 'agent' && (
+            {activeAgentTab === 'agent-chat' && (
             <section className="tab-grid">
-              {activeTab === 'agent' && (
-              <Panel title="AI 추천 결과 상세">
-                {latestAgentRecommendation ? (
-                  <RecommendationResult recommendation={latestAgentRecommendation} />
-                ) : (
-                  <p className="empty">AI Agent 요청 결과에 추천 후보가 있으면 여기에 표시됩니다.</p>
-                )}
-              </Panel>
-              )}
-            </section>
-            )}
-
-            {activeTab === 'agent' && (
-            <section className="tab-grid">
-              <Panel title="AI Agent" id="agent">
+              <Panel title="AI 대화" id="agent">
+                <p className="agent-mode-desc">
+                  자연어로 자유롭게 요청하세요. AI가 워크스페이스 데이터를 직접 조회하며 맥락에 맞는 답변을 드립니다.
+                  <br />복잡한 상황(취소 대처, 커플 맞춤 추천 등)에 적합합니다.
+                </p>
                 <form className="stack-form" onSubmit={submitAgentMessage}>
                   <textarea
                     name="message"
@@ -857,7 +873,7 @@ function App() {
                   </button>
                 </form>
                 {agentHistory.length === 0 ? (
-                  <p className="empty">아직 AI Agent에게 요청한 내역이 없습니다.</p>
+                  <p className="empty">아직 AI에게 요청한 내역이 없습니다.</p>
                 ) : (
                   <ul className="agent-history">
                     {agentHistory
@@ -884,8 +900,23 @@ function App() {
                   </ul>
                 )}
               </Panel>
+              <Panel title="AI 대화 추천 결과">
+                {latestAgentRecommendation ? (
+                  <RecommendationResult recommendation={latestAgentRecommendation} />
+                ) : (
+                  <p className="empty">AI 대화에서 업체 추천 결과가 있으면 여기에 표시됩니다.</p>
+                )}
+              </Panel>
+            </section>
+            )}
 
+            {activeAgentTab === 'agent-recommend' && (
+            <section className="tab-grid">
               <Panel title="업체 추천" id="recommendation">
+                <p className="agent-mode-desc">
+                  카테고리와 지역을 지정해 조건에 맞는 업체를 빠르게 추천받습니다.
+                  <br />워크스페이스 내 등록 업체를 우선 추천하며, 외부 후보도 포함할 수 있습니다.
+                </p>
                 <form
                   className="stack-form"
                   onSubmit={(event) =>
@@ -905,11 +936,11 @@ function App() {
                     <select name="category" defaultValue="WEDDING_HALL">
                       {categories.map((category) => (
                         <option key={category} value={category}>
-                          {category}
+                          {categoryLabel[category] || category}
                         </option>
                       ))}
                     </select>
-                    <input name="areaKeyword" placeholder="지역 키워드" />
+                    <input name="areaKeyword" placeholder="지역 키워드 (예: 강남, 홍대)" />
                   </TwoColumns>
                   <label className="check-row">
                     <input name="includeExternalSearch" type="checkbox" />
@@ -1126,32 +1157,53 @@ function ResultList({ items, emptyMessage, renderItem }) {
   )
 }
 
-function ManageList({ items, emptyMessage, renderLabel, onEdit, onDelete, onSelect, selectedId }) {
+function ManageList({ items, emptyMessage, renderLabel, onEdit, onDelete, onSelect, selectedId, searchable }) {
+  const [query, setQuery] = useState('')
+
   if (items.length === 0) {
     return <p className="empty">{emptyMessage}</p>
   }
 
+  const filtered = searchable && query.trim()
+    ? items.filter((item) => renderLabel(item).toLowerCase().includes(query.toLowerCase()))
+    : items
+
   return (
-    <ul className="manage-list">
-      {items.map((item) => (
-        <li key={item.id} className={selectedId === item.id ? 'selected' : ''}>
-          <span
-            className={onSelect ? 'manage-list__label clickable' : 'manage-list__label'}
-            onClick={() => onSelect?.(item)}
-          >
-            {renderLabel(item)}
-          </span>
-          <div className="manage-list__actions">
-            <button type="button" className="small-button" onClick={() => onEdit(item)}>
-              수정
-            </button>
-            <button type="button" className="small-button danger" onClick={() => onDelete(item)}>
-              삭제
-            </button>
-          </div>
-        </li>
-      ))}
-    </ul>
+    <div className="manage-list-wrap">
+      {searchable && (
+        <input
+          className="manage-list-search"
+          type="search"
+          placeholder="검색..."
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+        />
+      )}
+      {filtered.length === 0 ? (
+        <p className="empty">검색 결과가 없습니다.</p>
+      ) : (
+        <ul className="manage-list">
+          {filtered.map((item) => (
+            <li key={item.id} className={selectedId === item.id ? 'selected' : ''}>
+              <span
+                className={onSelect ? 'manage-list__label clickable' : 'manage-list__label'}
+                onClick={() => onSelect?.(item)}
+              >
+                {renderLabel(item)}
+              </span>
+              <div className="manage-list__actions">
+                <button type="button" className="small-button" onClick={() => onEdit(item)}>
+                  수정
+                </button>
+                <button type="button" className="small-button danger" onClick={() => onDelete(item)}>
+                  삭제
+                </button>
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
   )
 }
 
