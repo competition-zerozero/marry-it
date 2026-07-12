@@ -1,5 +1,7 @@
 .app-shell {
   min-height: 100vh;
+  display: flex;
+  flex-direction: column;
   background: #fbfbfd;
 }
 
@@ -118,55 +120,47 @@
   }
 }
 
-.sidebar {
+.topbar {
   position: sticky;
   top: 0;
   z-index: 10;
-  display: grid;
-  grid-template-columns: minmax(240px, 340px) minmax(0, 1fr);
-  gap: 24px;
+  display: flex;
   align-items: center;
+  gap: 8px;
+  padding: 0 28px;
+  height: 56px;
+  background: rgba(255, 255, 255, 0.95);
   border-bottom: 1px solid #f0edf1;
-  background: rgba(255, 255, 255, 0.92);
-  padding: 22px 36px;
   backdrop-filter: blur(18px);
+  flex-shrink: 0;
 }
 
-.brand-block {
-  display: grid;
-  gap: 4px;
-}
-
-.brand-block h1 {
-  margin: 0;
-  color: #19191c;
-  font-size: 24px;
+.topbar-logo {
+  font-size: 15px;
   font-weight: 800;
-  line-height: 1.18;
-}
-
-.brand-block p:last-child {
-  color: #71717a;
-  font-size: 14px;
+  color: #ff5b8a;
+  letter-spacing: -0.02em;
+  flex-shrink: 0;
+  margin-right: 12px;
 }
 
 .tab-nav {
   display: flex;
-  gap: 8px;
-  justify-content: flex-end;
-  overflow-x: auto;
+  align-items: center;
+  gap: 2px;
+  flex: 1;
 }
 
 .tab-nav button {
-  min-height: 38px;
+  min-height: 34px;
   border: 0;
   border-radius: 999px;
   background: transparent;
   color: #65656d;
-  padding: 0 16px;
+  padding: 0 14px;
   white-space: nowrap;
-  font-size: 15px;
-  font-weight: 700;
+  font-size: 14px;
+  font-weight: 600;
 }
 
 .tab-nav button:hover {
@@ -177,19 +171,40 @@
 .tab-nav button.active {
   background: #ff5b8a;
   color: #ffffff;
-  box-shadow: 0 8px 18px rgba(255, 91, 138, 0.25);
+  font-weight: 800;
+  box-shadow: 0 4px 12px rgba(255, 91, 138, 0.22);
+}
+
+.topbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.topbar-actions select {
+  min-height: 34px;
+  font-size: 13px;
+  padding: 0 10px;
+  width: auto;
+}
+
+.topbar-actions button,
+.topbar-actions .button {
+  min-height: 34px;
+  padding: 0 14px;
+  font-size: 13px;
 }
 
 .content {
   display: flex;
   flex-direction: column;
   gap: 22px;
-  width: min(1180px, calc(100% - 48px));
+  width: min(1180px, calc(100% - 64px));
   margin: 0 auto;
   padding: 28px 0 48px;
 }
 
-.topbar,
 .workspace-summary,
 .login-panel,
 .preview-list,
@@ -198,24 +213,6 @@
   border-radius: 8px;
   background: #ffffff;
   box-shadow: 0 10px 30px rgba(32, 32, 36, 0.05);
-}
-
-.topbar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  padding: 18px 20px;
-}
-
-.topbar strong {
-  color: #2b2b31;
-}
-
-.topbar-actions {
-  display: flex;
-  align-items: center;
-  gap: 8px;
 }
 
 .eyebrow {
@@ -331,8 +328,7 @@
 }
 
 .data-grid,
-.form-grid,
-.management-grid {
+.tab-grid {
   display: grid;
   gap: 16px;
 }
@@ -341,12 +337,8 @@
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
-.form-grid {
+.tab-grid {
   grid-template-columns: repeat(2, minmax(0, 1fr));
-}
-
-.management-grid {
-  grid-template-columns: 1fr;
 }
 
 .preview-list,
@@ -522,55 +514,50 @@ button:disabled {
   margin: 8px 0 0;
 }
 
-@media (max-width: 980px) {
-  .sidebar {
-    position: static;
+@media (max-width: 1024px) {
+  .tab-grid {
     grid-template-columns: 1fr;
-    padding: 20px;
   }
 
-  .tab-nav {
-    justify-content: flex-start;
+  .data-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 768px) {
+  .topbar {
+    padding: 0 16px;
+    gap: 4px;
+    overflow-x: auto;
+  }
+
+  .topbar-logo {
+    margin-right: 4px;
+  }
+
+  .topbar-actions {
+    display: none;
   }
 
   .content {
-    width: min(100% - 28px, 1180px);
+    width: calc(100% - 32px);
     padding-top: 18px;
   }
 
-  .workspace-summary,
-  .data-grid,
-  .form-grid,
+  .workspace-summary {
+    grid-template-columns: 1fr;
+  }
+
+  .data-grid {
+    grid-template-columns: 1fr;
+  }
+
   .two-columns {
     grid-template-columns: 1fr;
   }
-}
 
-@media (max-width: 720px) {
-  .topbar,
-  .topbar-actions,
   .inline-form {
-    align-items: stretch;
-    flex-direction: column;
     grid-template-columns: 1fr;
   }
 }
 
-.tab-nav button {
-  border: 0;
-  background: transparent;
-  color: #65656d;
-  box-shadow: none;
-}
-
-.tab-nav button:hover {
-  background: #fff1f5;
-  color: #d6336c;
-}
-
-.tab-nav button.active,
-.tab-nav button.active:hover {
-  background: #ff5b8a;
-  color: #ffffff;
-  box-shadow: 0 8px 18px rgba(255, 91, 138, 0.25);
-}

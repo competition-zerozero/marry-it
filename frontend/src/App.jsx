@@ -346,12 +346,8 @@ function App() {
 
   return (
     <main className="app-shell">
-      <aside className="sidebar">
-        <div className="brand-block">
-          <p className="eyebrow">marry-it</p>
-          <h1>Wedding Planner Suite</h1>
-          <p>고객, 업체, 일정, AI 추천을 한 곳에서 관리합니다.</p>
-        </div>
+      <header className="topbar">
+        <span className="topbar-logo">marry-it</span>
         <nav aria-label="주요 메뉴" className="tab-nav">
           {tabs.map((tab) => (
             <button
@@ -364,34 +360,28 @@ function App() {
             </button>
           ))}
         </nav>
-      </aside>
+        <div className="topbar-actions">
+          <select
+            aria-label="워크스페이스 선택"
+            value={workspaceId}
+            onChange={(event) => setWorkspaceId(event.target.value)}
+          >
+            {me.workspaces.map((workspace) => (
+              <option key={workspace.workspaceId} value={workspace.workspaceId}>
+                {workspace.name}
+              </option>
+            ))}
+          </select>
+          <button type="button" className="secondary-button" onClick={() => loadWorkspaceData()} disabled={loading}>
+            새로고침
+          </button>
+          <a className="button secondary" href={`${BACKEND_URL}/logout`}>
+            로그아웃
+          </a>
+        </div>
+      </header>
 
       <section className="content">
-        <header className="topbar">
-          <div>
-            <p className="eyebrow">현재 상태</p>
-            <strong>{status}</strong>
-          </div>
-          <div className="topbar-actions">
-            <select
-              aria-label="워크스페이스 선택"
-              value={workspaceId}
-              onChange={(event) => setWorkspaceId(event.target.value)}
-            >
-              {me.workspaces.map((workspace) => (
-                <option key={workspace.workspaceId} value={workspace.workspaceId}>
-                  {workspace.name}
-                </option>
-              ))}
-            </select>
-            <button type="button" onClick={() => loadWorkspaceData()} disabled={loading}>
-              새로고침
-            </button>
-            <a className="button secondary" href={`${BACKEND_URL}/logout`}>
-              로그아웃
-            </a>
-          </div>
-        </header>
 
         <>
             {activeTab === 'dashboard' && (
@@ -433,7 +423,7 @@ function App() {
             )}
 
             {(activeTab === 'customers' || activeTab === 'vendors') && (
-            <section className="form-grid">
+            <section className="tab-grid">
               {activeTab === 'customers' && (
               <Panel title="고객 등록" id="customer-form">
                 <form
@@ -513,7 +503,7 @@ function App() {
             )}
 
             {(activeTab === 'kakao' || activeTab === 'schedules') && (
-            <section className="form-grid">
+            <section className="tab-grid">
               {activeTab === 'kakao' && (
               <Panel title="카카오맵 업체 검색" id="kakao">
                 <form className="inline-form" onSubmit={searchKakao}>
@@ -577,7 +567,7 @@ function App() {
             )}
 
             {(activeTab === 'customers' || activeTab === 'vendors' || activeTab === 'schedules') && (
-            <section className="management-grid">
+            <section className="tab-grid">
               {activeTab === 'customers' && (
               <Panel title="고객 상세 · 수정 · 삭제" id="customers-manage">
                 <ManageList
@@ -688,7 +678,7 @@ function App() {
             )}
 
             {(activeTab === 'vendors' || activeTab === 'agent') && (
-            <section className="form-grid">
+            <section className="tab-grid">
               {activeTab === 'vendors' && (
               <Panel title="업체 경험 · 노하우" id="experiences">
                 <form
@@ -745,7 +735,7 @@ function App() {
             )}
 
             {activeTab === 'agent' && (
-            <section className="form-grid">
+            <section className="tab-grid">
               <Panel title="AI Agent" id="agent">
                 <form
                   className="stack-form"
@@ -831,7 +821,7 @@ function App() {
             )}
 
             {activeTab === 'team' && (
-            <section className="form-grid" id="team">
+            <section className="tab-grid" id="team">
               <Panel title="팀 멤버">
                 <ResultList
                   items={members}
