@@ -196,13 +196,68 @@
   font-size: 13px;
 }
 
+.body-layout {
+  display: flex;
+  flex: 1;
+}
+
+.sub-sidebar {
+  width: 160px;
+  flex-shrink: 0;
+  border-right: 1px solid #f0edf1;
+  background: #ffffff;
+  padding: 24px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.sub-sidebar__title {
+  margin: 0 0 8px 8px;
+  font-size: 11px;
+  font-weight: 800;
+  color: #ff5b8a;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.sub-sidebar nav {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.sub-sidebar button {
+  min-height: 36px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: #65656d;
+  padding: 0 12px;
+  text-align: left;
+  font-size: 14px;
+  font-weight: 600;
+  box-shadow: none;
+}
+
+.sub-sidebar button:hover {
+  background: #fff1f5;
+  color: #d6336c;
+}
+
+.sub-sidebar button.active {
+  background: #fff1f5;
+  color: #ff5b8a;
+  font-weight: 800;
+}
+
 .content {
   display: flex;
   flex-direction: column;
   gap: 22px;
-  width: min(1180px, calc(100% - 64px));
-  margin: 0 auto;
-  padding: 28px 0 48px;
+  flex: 1;
+  min-width: 0;
+  padding: 28px 36px 48px;
 }
 
 .workspace-summary,
@@ -547,6 +602,198 @@ button:disabled {
   white-space: pre-wrap;
 }
 
+/* ── Wedding date picker ── */
+.wedding-date-picker {
+  display: grid;
+  gap: 8px;
+}
+
+.wedding-date-picker__label {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 700;
+  color: #555560;
+}
+
+.wedding-date-picker__modes {
+  display: flex;
+  gap: 16px;
+}
+
+.radio-option {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+  color: #444;
+  cursor: pointer;
+}
+
+.radio-option input {
+  width: auto;
+  min-height: auto;
+  cursor: pointer;
+}
+
+.wedding-date-picker__inputs {
+  display: flex;
+  gap: 8px;
+}
+
+.wedding-date-picker__inputs input,
+.wedding-date-picker__inputs select {
+  flex: 1;
+  min-width: 0;
+}
+
+/* ── Customer list & detail ── */
+.manage-list li {
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  border: 1px solid transparent;
+  transition: background 0.12s, border-color 0.12s, box-shadow 0.12s;
+}
+
+.manage-list li.selected {
+  background: #111114;
+  border-color: #111114;
+  box-shadow: 0 4px 16px rgba(17, 17, 20, 0.18);
+}
+
+.manage-list li.selected .manage-list__label {
+  color: #ffffff;
+}
+
+.manage-list li.selected .manage-list__actions .small-button {
+  background: rgba(255,255,255,0.1);
+  border-color: rgba(255,255,255,0.18);
+  color: #ffffff;
+}
+
+.manage-list li.selected .manage-list__actions .small-button.danger {
+  background: rgba(255,91,138,0.22);
+  border-color: rgba(255,91,138,0.4);
+  color: #ff8fb5;
+}
+
+.manage-list li:not(.selected):hover {
+  background: #f5f5f8;
+  border-color: #eaeaef;
+}
+
+.manage-list__label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 14px;
+  color: #3a3a42;
+}
+
+.manage-list__label.clickable {
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.manage-list__label.clickable:hover {
+  color: #111114;
+}
+
+.manage-list__actions {
+  display: flex;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+/* ── Customer detail panel ── */
+.customer-detail {
+  display: grid;
+  gap: 20px;
+}
+
+.customer-detail__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid #f0edf1;
+}
+
+.customer-detail__header h4 {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 800;
+  color: #111114;
+  letter-spacing: -0.02em;
+}
+
+.customer-detail__actions {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.customer-detail__fields {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+  margin: 0;
+}
+
+.customer-detail__field {
+  background: #f9f9fc;
+  border: 1px solid #f0edf1;
+  border-radius: 10px;
+  padding: 12px 14px;
+  transition: background 0.1s;
+}
+
+.customer-detail__field:hover {
+  background: #f4f2f8;
+}
+
+.customer-detail__field dt {
+  font-size: 10px;
+  font-weight: 700;
+  color: #b0b0bc;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-bottom: 5px;
+}
+
+.customer-detail__field dd {
+  margin: 0;
+  font-size: 13.5px;
+  font-weight: 500;
+  color: #1e1e24;
+  white-space: pre-wrap;
+  word-break: break-word;
+  line-height: 1.5;
+}
+
+.customer-detail__empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 48px 24px;
+  color: #c0c0cc;
+  font-size: 14px;
+  text-align: center;
+}
+
+.customer-detail__empty-icon {
+  font-size: 32px;
+  opacity: 0.4;
+}
+
+@media (max-width: 768px) {
+  .customer-detail__fields {
+    grid-template-columns: 1fr;
+  }
+}
+
 .agent-history__tools {
   margin-top: 8px;
   font-size: 13px;
@@ -583,6 +830,9 @@ button:disabled {
 }
 
 @media (max-width: 1024px) {
+  .sub-sidebar {
+    width: 130px;
+  }
   .tab-grid {
     grid-template-columns: 1fr;
   }
@@ -593,6 +843,33 @@ button:disabled {
 }
 
 @media (max-width: 768px) {
+  .body-layout {
+    flex-direction: column;
+  }
+
+  .sub-sidebar {
+    width: 100%;
+    border-right: none;
+    border-bottom: 1px solid #f0edf1;
+    padding: 12px 16px;
+    flex-direction: row;
+    align-items: center;
+    gap: 0;
+  }
+
+  .sub-sidebar__title {
+    margin: 0 12px 0 0;
+  }
+
+  .sub-sidebar nav {
+    flex-direction: row;
+    gap: 4px;
+  }
+
+  .content {
+    padding: 18px 20px 40px;
+  }
+
   .topbar {
     padding: 0 16px;
     gap: 4px;

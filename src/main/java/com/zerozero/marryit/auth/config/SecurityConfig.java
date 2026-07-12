@@ -31,7 +31,7 @@ public class SecurityConfig {
                         .anyRequest().authenticated()
                 )
                 .logout(logout -> logout.logoutSuccessUrl(frontendUrl))
-                .csrf(csrf -> csrf.ignoringRequestMatchers("/h2-console/**"))
+                .csrf(csrf -> csrf.ignoringRequestMatchers("/h2-console/**", "/api/**"))
                 .headers(headers -> headers.frameOptions(Customizer.withDefaults()))
                 .addFilterBefore(inviteTokenCaptureFilter, OAuth2AuthorizationRequestRedirectFilter.class);
 

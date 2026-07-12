@@ -7,6 +7,8 @@ import com.zerozero.marryit.customer.service.CustomerService;
 import jakarta.servlet.http.HttpSession;
 import jakarta.validation.Valid;
 import java.util.List;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -22,6 +24,8 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/workspaces/{workspaceId}/customers")
 public class CustomerController {
 
+    private static final Logger log = LoggerFactory.getLogger(CustomerController.class);
+
     private final CustomerService customerService;
 
     public CustomerController(CustomerService customerService) {
@@ -35,7 +39,16 @@ public class CustomerController {
             @Valid @RequestBody CustomerRequest request,
             HttpSession session
     ) {
-        return customerService.create(workspaceId, currentUserId(session), request);
+        Long userId = currentUserId(session);
+        log.info("고객 등록 요청 workspaceId={} userId={} groomName={} brideName={}", workspaceId, userId, request.groomName(), request.brideName());
+        try {
+            CustomerResponse response = customerService.create(workspaceId, userId, request);
+            log.info("고객 등록 완료 customerId={}", response.id());
+            return response;
+        } catch (Exception e) {
+            log.error("고객 등록 실패 workspaceId={} userId={} error={}", workspaceId, userId, e.getMessage(), e);
+            throw e;
+        }
     }
 
     @GetMapping

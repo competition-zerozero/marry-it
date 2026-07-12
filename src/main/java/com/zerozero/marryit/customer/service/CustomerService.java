@@ -8,11 +8,15 @@ import com.zerozero.marryit.workspace.domain.Workspace;
 import com.zerozero.marryit.workspace.repository.WorkspaceRepository;
 import com.zerozero.marryit.workspace.service.WorkspaceAccessService;
 import java.util.List;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class CustomerService {
+
+    private static final Logger log = LoggerFactory.getLogger(CustomerService.class);
 
     private final CustomerRepository customerRepository;
     private final WorkspaceRepository workspaceRepository;
@@ -33,9 +37,11 @@ public class CustomerService {
 
     @Transactional
     public CustomerResponse create(Long workspaceId, Long userId, CustomerRequest request) {
+        log.info("워크스페이스 멤버 검증 workspaceId={} userId={}", workspaceId, userId);
         workspaceAccessService.validateMember(userId, workspaceId);
         Workspace workspace = getWorkspace(workspaceId);
         User planner = getUser(userId);
+        log.info("고객 엔티티 생성 workspaceId={} plannerId={}", workspaceId, planner.getId());
 
         Customer customer = Customer.create(
                 workspace,

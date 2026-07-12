@@ -36,6 +36,11 @@ const tabs = [
   { id: 'team', label: '팀' },
 ]
 
+const customerSubTabs = [
+  { id: 'customer-add', label: '고객 등록' },
+  { id: 'customer-list', label: '고객 목록' },
+]
+
 async function api(path, options = {}) {
   const response = await fetch(path, {
     credentials: 'include',
@@ -64,13 +69,25 @@ function toDateTimeLocal(value) {
   return value ? String(value).slice(0, 16) : ''
 }
 
+function buildWeddingDate(data) {
+  const mode = data.get('weddingDateMode')
+  if (mode === 'undecided') return null
+  const year = data.get('weddingYear')
+  const month = data.get('weddingMonth')
+  const day = data.get('weddingDay')
+  if (!year || !month) return null
+  if (mode === 'month') return `${year}-${String(month).padStart(2, '0')}-01`
+  if (!day) return null
+  return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`
+}
+
 function customerPayload(data) {
   return {
     groomName: data.get('groomName'),
     brideName: data.get('brideName'),
     phoneNumber: data.get('phoneNumber'),
     residenceArea: data.get('residenceArea'),
-    weddingDate: data.get('weddingDate'),
+    weddingDate: buildWeddingDate(data),
     preferredWeddingArea: data.get('preferredWeddingArea'),
     expectedGuestCount: Number(data.get('expectedGuestCount') || 0),
     totalBudget: Number(data.get('totalBudget') || 0),
@@ -125,12 +142,14 @@ function App() {
   const [agentHistory, setAgentHistory] = useState([])
   const [recommendation, setRecommendation] = useState(null)
   const [selectedKakaoPlace, setSelectedKakaoPlace] = useState(null)
+  const [selectedCustomer, setSelectedCustomer] = useState(null)
   const [editingCustomer, setEditingCustomer] = useState(null)
   const [editingVendor, setEditingVendor] = useState(null)
   const [editingSchedule, setEditingSchedule] = useState(null)
   const [selectedVendorId, setSelectedVendorId] = useState('')
   const [vendorExperiences, setVendorExperiences] = useState([])
   const [activeTab, setActiveTab] = useState('dashboard')
+  const [customerSubTab, setCustomerSubTab] = useState('customer-add')
   const [status, setStatus] = useState('로그인 상태를 확인하고 있습니다.')
   const [loading, setLoading] = useState(true)
   const [inviteToken, setInviteToken] = useState(
@@ -425,6 +444,8 @@ function App() {
     )
   }
 
+  const activeCustomerTab = activeTab === 'customers' ? customerSubTab : null
+
   return (
     <main className="app-shell">
       <header className="topbar">
@@ -472,6 +493,25 @@ function App() {
         />
       )}
 
+      <div className="body-layout">
+        {activeTab === 'customers' && (
+          <aside className="sub-sidebar">
+            <p className="sub-sidebar__title">고객</p>
+            <nav>
+              {customerSubTabs.map((sub) => (
+                <button
+                  key={sub.id}
+                  type="button"
+                  className={customerSubTab === sub.id ? 'active' : ''}
+                  onClick={() => setCustomerSubTab(sub.id)}
+                >
+                  {sub.label}
+                </button>
+              ))}
+            </nav>
+          </aside>
+        )}
+
       <section className="content">
 
         <>
@@ -513,9 +553,8 @@ function App() {
               </>
             )}
 
-            {(activeTab === 'customers' || activeTab === 'vendors') && (
+            {activeCustomerTab === 'customer-add' && (
             <section className="tab-grid">
-              {activeTab === 'customers' && (
               <Panel title="고객 등록" id="customer-form">
                 <form
                   className="stack-form"
@@ -528,11 +567,11 @@ function App() {
                     <input name="brideName" placeholder="신부 이름" required />
                     <input name="phoneNumber" placeholder="연락처" />
                     <input name="residenceArea" placeholder="거주 지역" />
-                    <input name="weddingDate" type="date" />
                     <input name="preferredWeddingArea" placeholder="희망 예식 지역" />
                     <input name="expectedGuestCount" type="number" min="0" placeholder="예상 하객 수" />
                     <input name="totalBudget" type="number" min="0" placeholder="총예산" />
                   </TwoColumns>
+                  <WeddingDatePicker />
                   <textarea name="preferredAtmosphere" placeholder="선호 분위기" />
                   <textarea name="preferredStyle" placeholder="선호 스타일" />
                   <textarea name="importantConditions" placeholder="중요 조건" />
@@ -546,6 +585,68 @@ function App() {
                   </button>
                 </form>
               </Panel>
+            </section>
+            )}
+
+            {(activeCustomerTab === 'customer-list' || activeTab === 'vendors') && (
+            <section className="tab-grid">
+              {activeCustomerTab === 'customer-list' && (
+              <>
+              <Panel title="고객 목록" id="customer-list">
+                <ManageList
+                  items={customers}
+                  emptyMessage="등록된 고객이 없습니다."
+                  renderLabel={(customer) =>
+                    `${customer.groomName || ''} & ${customer.brideName || ''} ${customer.weddingDate ? '· ' + formatWeddingDate(customer.weddingDate) : ''}`
+                  }
+                  onEdit={(customer) => { setEditingCustomer(customer); setSelectedCustomer(customer) }}
+                  onDelete={(customer) =>
+                    deleteResource(
+                      `/api/workspaces/${workspaceId}/customers/${customer.id}`,
+                      `${customer.groomName} & ${customer.brideName} 고객을 삭제할까요?`,
+                    )
+                  }
+                  onSelect={(customer) => { setSelectedCustomer(customer); setEditingCustomer(null) }}
+                  selectedId={selectedCustomer?.id}
+                />
+              </Panel>
+              <Panel title={selectedCustomer ? `${selectedCustomer.groomName} & ${selectedCustomer.brideName}` : '고객 상세'} id="customer-detail">
+                {selectedCustomer && !editingCustomer ? (
+                  <CustomerDetailView
+                    customer={selectedCustomer}
+                    onEdit={(c) => setEditingCustomer(c)}
+                    onDelete={(customer) =>
+                      deleteResource(
+                        `/api/workspaces/${workspaceId}/customers/${customer.id}`,
+                        `${customer.groomName} & ${customer.brideName} 고객을 삭제할까요?`,
+                      ).then(() => setSelectedCustomer(null))
+                    }
+                  />
+                ) : editingCustomer ? (
+                  <CustomerEditForm
+                    customer={editingCustomer}
+                    loading={loading}
+                    onCancel={() => setEditingCustomer(null)}
+                    onSubmit={(event) =>
+                      updateForm(
+                        event,
+                        `/api/workspaces/${workspaceId}/customers/${editingCustomer.id}`,
+                        customerPayload,
+                        async () => {
+                          setEditingCustomer(null)
+                          await loadWorkspaceData()
+                        },
+                      )
+                    }
+                  />
+                ) : (
+                  <div className="customer-detail__empty">
+                    <span className="customer-detail__empty-icon">👤</span>
+                    <span>목록에서 고객을 선택하세요</span>
+                  </div>
+                )}
+              </Panel>
+              </>
               )}
 
               {activeTab === 'vendors' && (
@@ -657,45 +758,9 @@ function App() {
             </section>
             )}
 
-            {(activeTab === 'customers' || activeTab === 'vendors' || activeTab === 'schedules') && (
-            <section className="tab-grid">
-              {activeTab === 'customers' && (
-              <Panel title="고객 상세 · 수정 · 삭제" id="customers-manage">
-                <ManageList
-                  items={customers}
-                  emptyMessage="관리할 고객이 없습니다."
-                  renderLabel={(customer) =>
-                    `${customer.id}. ${customer.groomName || ''} & ${customer.brideName || ''}`
-                  }
-                  onEdit={setEditingCustomer}
-                  onDelete={(customer) =>
-                    deleteResource(
-                      `/api/workspaces/${workspaceId}/customers/${customer.id}`,
-                      `${customer.groomName} & ${customer.brideName} 고객을 삭제할까요?`,
-                    )
-                  }
-                />
-                {editingCustomer && (
-                  <CustomerEditForm
-                    customer={editingCustomer}
-                    loading={loading}
-                    onCancel={() => setEditingCustomer(null)}
-                    onSubmit={(event) =>
-                      updateForm(
-                        event,
-                        `/api/workspaces/${workspaceId}/customers/${editingCustomer.id}`,
-                        customerPayload,
-                        async () => {
-                          setEditingCustomer(null)
-                          await loadWorkspaceData()
-                        },
-                      )
-                    }
-                  />
-                )}
-              </Panel>
-              )}
 
+            {(activeTab === 'vendors' || activeTab === 'schedules') && (
+            <section className="tab-grid">
               {activeTab === 'vendors' && (
               <Panel title="업체 상세 · 수정 · 삭제">
                 <ManageList
@@ -989,6 +1054,7 @@ function App() {
             )}
           </>
       </section>
+      </div>
     </main>
   )
 }
@@ -1107,7 +1173,7 @@ function ResultList({ items, emptyMessage, renderItem }) {
   )
 }
 
-function ManageList({ items, emptyMessage, renderLabel, onEdit, onDelete }) {
+function ManageList({ items, emptyMessage, renderLabel, onEdit, onDelete, onSelect, selectedId }) {
   if (items.length === 0) {
     return <p className="empty">{emptyMessage}</p>
   }
@@ -1115,9 +1181,14 @@ function ManageList({ items, emptyMessage, renderLabel, onEdit, onDelete }) {
   return (
     <ul className="manage-list">
       {items.map((item) => (
-        <li key={item.id}>
-          <span>{renderLabel(item)}</span>
-          <div>
+        <li key={item.id} className={selectedId === item.id ? 'selected' : ''}>
+          <span
+            className={onSelect ? 'manage-list__label clickable' : 'manage-list__label'}
+            onClick={() => onSelect?.(item)}
+          >
+            {renderLabel(item)}
+          </span>
+          <div className="manage-list__actions">
             <button type="button" className="small-button" onClick={() => onEdit(item)}>
               수정
             </button>
@@ -1131,6 +1202,103 @@ function ManageList({ items, emptyMessage, renderLabel, onEdit, onDelete }) {
   )
 }
 
+function formatWeddingDate(dateStr) {
+  if (!dateStr) return '미정'
+  const [year, month, day] = dateStr.split('-')
+  if (day === '01' || !day) return `${year}년 ${parseInt(month)}월`
+  return `${year}년 ${parseInt(month)}월 ${parseInt(day)}일`
+}
+
+function WeddingDatePicker({ defaultValue }) {
+  const [mode, setMode] = useState(() => {
+    if (!defaultValue) return 'undecided'
+    const parts = defaultValue.split('-')
+    return parts[2] === '01' ? 'month' : 'day'
+  })
+  const [year, setYear] = useState(() => defaultValue ? defaultValue.split('-')[0] : '')
+  const [month, setMonth] = useState(() => defaultValue ? String(parseInt(defaultValue.split('-')[1])) : '')
+  const [day, setDay] = useState(() => {
+    if (!defaultValue) return ''
+    const d = defaultValue.split('-')[2]
+    return d === '01' ? '' : String(parseInt(d))
+  })
+
+  return (
+    <div className="wedding-date-picker">
+      <p className="wedding-date-picker__label">결혼 날짜</p>
+      <div className="wedding-date-picker__modes">
+        {[['undecided', '미정'], ['month', '년·월'], ['day', '년·월·일']].map(([val, label]) => (
+          <label key={val} className="radio-option">
+            <input type="radio" name="weddingDateMode" value={val} checked={mode === val} onChange={() => setMode(val)} />
+            {label}
+          </label>
+        ))}
+      </div>
+      {mode !== 'undecided' && (
+        <div className="wedding-date-picker__inputs">
+          <input
+            type="number" name="weddingYear" placeholder="년도" min="2020" max="2035"
+            value={year} onChange={(e) => setYear(e.target.value)}
+          />
+          <select name="weddingMonth" value={month} onChange={(e) => setMonth(e.target.value)}>
+            <option value="">월</option>
+            {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
+              <option key={m} value={m}>{m}월</option>
+            ))}
+          </select>
+          {mode === 'day' && (
+            <select name="weddingDay" value={day} onChange={(e) => setDay(e.target.value)}>
+              <option value="">일</option>
+              {Array.from({ length: 31 }, (_, i) => i + 1).map((d) => (
+                <option key={d} value={d}>{d}일</option>
+              ))}
+            </select>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function CustomerDetailView({ customer, onEdit, onDelete }) {
+  const fields = [
+    ['연락처', customer.phoneNumber],
+    ['거주 지역', customer.residenceArea],
+    ['결혼 날짜', formatWeddingDate(customer.weddingDate)],
+    ['희망 예식 지역', customer.preferredWeddingArea],
+    ['예상 하객 수', customer.expectedGuestCount != null ? `${customer.expectedGuestCount}명` : null],
+    ['총예산', customer.totalBudget != null ? `${customer.totalBudget.toLocaleString()}원` : null],
+    ['선호 분위기', customer.preferredAtmosphere],
+    ['선호 스타일', customer.preferredStyle],
+    ['중요 조건', customer.importantConditions],
+    ['피하고 싶은 조건', customer.avoidConditions],
+    ['항목별 예산 메모', customer.itemBudgetMemo],
+    ['상담 메모', customer.consultationMemo],
+    ['해야 할 일', customer.todoMemo],
+    ['완료한 일', customer.completedMemo],
+  ]
+
+  return (
+    <div className="customer-detail">
+      <div className="customer-detail__header">
+        <h4>{customer.groomName} &amp; {customer.brideName}</h4>
+        <div className="customer-detail__actions">
+          <button type="button" className="small-button" onClick={() => onEdit(customer)}>수정</button>
+          <button type="button" className="small-button danger" onClick={() => onDelete(customer)}>삭제</button>
+        </div>
+      </div>
+      <dl className="customer-detail__fields">
+        {fields.filter(([, v]) => v != null && v !== '' && v !== '미정').map(([label, value]) => (
+          <div key={label} className="customer-detail__field">
+            <dt>{label}</dt>
+            <dd>{value}</dd>
+          </div>
+        ))}
+      </dl>
+    </div>
+  )
+}
+
 function CustomerEditForm({ customer, loading, onSubmit, onCancel }) {
   return (
     <form key={customer.id} className="stack-form edit-form" onSubmit={onSubmit}>
@@ -1139,7 +1307,6 @@ function CustomerEditForm({ customer, loading, onSubmit, onCancel }) {
         <input name="brideName" placeholder="신부 이름" defaultValue={customer.brideName || ''} required />
         <input name="phoneNumber" placeholder="연락처" defaultValue={customer.phoneNumber || ''} />
         <input name="residenceArea" placeholder="거주 지역" defaultValue={customer.residenceArea || ''} />
-        <input name="weddingDate" type="date" defaultValue={customer.weddingDate || ''} />
         <input name="preferredWeddingArea" placeholder="희망 예식 지역" defaultValue={customer.preferredWeddingArea || ''} />
         <input
           name="expectedGuestCount"
@@ -1150,6 +1317,7 @@ function CustomerEditForm({ customer, loading, onSubmit, onCancel }) {
         />
         <input name="totalBudget" type="number" min="0" placeholder="총예산" defaultValue={customer.totalBudget || 0} />
       </TwoColumns>
+      <WeddingDatePicker defaultValue={customer.weddingDate || ''} />
       <textarea name="preferredAtmosphere" placeholder="선호 분위기" defaultValue={customer.preferredAtmosphere || ''} />
       <textarea name="preferredStyle" placeholder="선호 스타일" defaultValue={customer.preferredStyle || ''} />
       <textarea name="importantConditions" placeholder="중요 조건" defaultValue={customer.importantConditions || ''} />
