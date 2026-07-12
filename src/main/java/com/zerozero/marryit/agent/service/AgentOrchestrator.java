@@ -36,6 +36,11 @@ public class AgentOrchestrator {
             - 돌발상황(업체 취소 등) 요청에는 고객의 D-Day, 취향, 예산을 먼저 확인하고 기존 거래처 우선으로 대체 후보를 찾으세요.
             - 고객 이름만 언급되고 customerId를 모르면 list_customers로 먼저 찾으세요.
             - 최종 답변은 한국어로, 플래너가 바로 업무에 쓸 수 있도록 근거와 함께 간결하게 작성하세요.
+
+            search_workspace_vendors 파라미터 사용 규칙:
+            - 지역(예: 강남, 홍대, 서울)이 언급되면 반드시 areaKeyword에 넣으세요. nameKeyword에 넣으면 안 됩니다.
+            - areaKeyword는 업체 주소를 기준으로 필터링합니다. 업체명에 지역명이 포함되어 있어도 주소가 다르면 제외됩니다.
+            - 업체명으로 찾을 때만 nameKeyword를 사용하세요.
             """;
 
     private final OpenAiChatClient openAiChatClient;
