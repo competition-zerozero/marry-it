@@ -1,50 +1,42 @@
 package com.zerozero.marryit.agent.service;
 
-import com.zerozero.marryit.recommendation.service.VendorRecommendationRequest;
+import com.zerozero.marryit.agent.tool.AgentToolContext;
 import com.zerozero.marryit.recommendation.service.VendorRecommendationResponse;
-import com.zerozero.marryit.recommendation.service.VendorRecommendationService;
+import com.zerozero.marryit.workspace.service.WorkspaceAccessService;
+import java.util.List;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class AgentService {
 
-    private final VendorRecommendationService vendorRecommendationService;
+    private static final String NOT_CONFIGURED_ANSWER =
+            "AI 연동이 아직 설정되지 않았습니다. 관리자에게 OPENAI_API_KEY 설정을 요청하세요. "
+                    + "설정 전까지는 확인되지 않은 추천을 만들어내지 않습니다.";
 
-    public AgentService(VendorRecommendationService vendorRecommendationService) {
-        this.vendorRecommendationService = vendorRecommendationService;
+    private final AgentOrchestrator agentOrchestrator;
+    private final WorkspaceAccessService workspaceAccessService;
+
+    public AgentService(AgentOrchestrator agentOrchestrator, WorkspaceAccessService workspaceAccessService) {
+        this.agentOrchestrator = agentOrchestrator;
+        this.workspaceAccessService = workspaceAccessService;
     }
 
     @Transactional(readOnly = true)
     public AgentResponse respond(Long workspaceId, Long userId, AgentRequest request) {
-        if (request.vendorCategory() == null) {
-            return new AgentResponse(
-                    "현재 Agent는 업체 카테고리가 지정된 업체 추천/대체 업체 탐색만 지원합니다. 확인되지 않은 가격, 일정, 계약 조건은 생성하지 않습니다.",
-                    null
-            );
+        workspaceAccessService.validateMember(userId, workspaceId);
+
+        if (!agentOrchestrator.isAvailable()) {
+            return new AgentResponse(NOT_CONFIGURED_ANSWER, List.of(), null);
         }
 
-        VendorRecommendationResponse recommendation = vendorRecommendationService.recommend(
-                workspaceId,
-                userId,
-                new VendorRecommendationRequest(
-                        request.vendorCategory(),
-                        request.areaKeyword(),
-                        request.includeExternalSearch()
-                )
-        );
+        AgentResult result = agentOrchestrator.run(request.message(), new AgentToolContext(workspaceId, userId));
 
-        String answer = buildAnswer(recommendation);
-        return new AgentResponse(answer, recommendation);
-    }
+        VendorRecommendationResponse vendorRecommendation =
+                result.workspaceCandidates().isEmpty() && result.externalCandidates().isEmpty()
+                        ? null
+                        : new VendorRecommendationResponse(result.workspaceCandidates(), result.externalCandidates());
 
-    private String buildAnswer(VendorRecommendationResponse recommendation) {
-        if (!recommendation.workspaceCandidates().isEmpty()) {
-            return "Workspace에 등록된 기존 업체 후보를 우선 반환합니다. 실제 예약 가능 여부와 계약 조건은 저장된 일정/계약 데이터로 추가 확인해야 합니다.";
-        }
-        if (!recommendation.externalCandidates().isEmpty()) {
-            return "기존 업체 후보가 없어 카카오맵 외부 후보를 반환합니다. 외부 후보는 검증되지 않았으며 등록 전 실제 조건 확인이 필요합니다.";
-        }
-        return "현재 데이터와 사용 가능한 외부 검색 결과에서 후보를 찾지 못했습니다.";
+        return new AgentResponse(result.answer(), result.toolCalls(), vendorRecommendation);
     }
 }

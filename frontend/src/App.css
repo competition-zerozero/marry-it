@@ -494,6 +494,74 @@ button:disabled {
   min-height: auto;
 }
 
+.invite-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin: 16px 48px 0;
+  padding: 16px 20px;
+  border-radius: 12px;
+  background: #fff5f8;
+  border: 1px solid #ffd7e3;
+}
+
+.invite-banner strong {
+  color: #ff5b8a;
+}
+
+.invite-banner p {
+  margin: 4px 0 0;
+  font-size: 14px;
+  color: #555;
+}
+
+.invite-banner__actions {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.agent-history {
+  display: grid;
+  gap: 12px;
+  margin-top: 16px;
+  list-style: none;
+  padding: 0;
+}
+
+.agent-history__item {
+  border-radius: 8px;
+  background: #fff5f8;
+  padding: 12px 14px;
+}
+
+.agent-history__question {
+  margin: 0 0 6px;
+  font-weight: 700;
+  color: #ff5b8a;
+}
+
+.agent-history__answer {
+  margin: 0;
+  white-space: pre-wrap;
+}
+
+.agent-history__tools {
+  margin-top: 8px;
+  font-size: 13px;
+  color: #555;
+}
+
+.agent-history__tools summary {
+  cursor: pointer;
+}
+
+.agent-history__tools ul {
+  margin: 6px 0 0;
+  padding-left: 18px;
+}
+
 .result-box,
 .recommendation-result {
   display: grid;
@@ -560,4 +628,3 @@ button:disabled {
     grid-template-columns: 1fr;
   }
 }
-

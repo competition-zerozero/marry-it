@@ -122,7 +122,7 @@ function App() {
   const [members, setMembers] = useState([])
   const [invitations, setInvitations] = useState([])
   const [kakaoResults, setKakaoResults] = useState([])
-  const [agentResult, setAgentResult] = useState(null)
+  const [agentHistory, setAgentHistory] = useState([])
   const [recommendation, setRecommendation] = useState(null)
   const [selectedKakaoPlace, setSelectedKakaoPlace] = useState(null)
   const [editingCustomer, setEditingCustomer] = useState(null)
@@ -133,14 +133,28 @@ function App() {
   const [activeTab, setActiveTab] = useState('dashboard')
   const [status, setStatus] = useState('로그인 상태를 확인하고 있습니다.')
   const [loading, setLoading] = useState(true)
+  const [inviteToken, setInviteToken] = useState(
+    () => new URLSearchParams(window.location.search).get('inviteToken'),
+  )
+  const [inviteDetail, setInviteDetail] = useState(null)
 
   const currentWorkspace = useMemo(() => {
     return me?.workspaces?.find((workspace) => String(workspace.workspaceId) === String(workspaceId))
   }, [me, workspaceId])
   const canManageTeam = currentWorkspace?.role === 'OWNER' || currentWorkspace?.role === 'ADMIN'
+  const latestAgentRecommendation = agentHistory.length
+    ? agentHistory[agentHistory.length - 1].response.vendorRecommendation
+    : null
 
   useEffect(() => {
+    if (new URLSearchParams(window.location.search).has('loginError')) {
+      setStatus('로그인에 실패했습니다. 잠시 후 다시 시도하거나 관리자에게 문의해 주세요.')
+    }
     loadMe()
+    if (inviteToken) {
+      loadInvite(inviteToken)
+    }
+    // oxlint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   useEffect(() => {
@@ -309,8 +323,66 @@ function App() {
     }
   }
 
+  async function submitAgentMessage(event) {
+    event.preventDefault()
+    const form = event.currentTarget
+    const message = new FormData(form).get('message')
+    if (!message) {
+      return
+    }
+    setLoading(true)
+    try {
+      const response = await api(`/api/workspaces/${workspaceId}/agent`, {
+        method: 'POST',
+        body: JSON.stringify({ message }),
+      })
+      setAgentHistory((prev) => [...prev, { message, response }])
+      form.reset()
+      setStatus('AI Agent 응답을 받았습니다.')
+    } catch (error) {
+      setStatus(error.message)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  async function loadInvite(token) {
+    try {
+      const data = await api(`/api/workspaces/invitations/${token}`)
+      setInviteDetail(data)
+    } catch (error) {
+      setInviteDetail({ error: error.message })
+    }
+  }
+
+  function clearInviteTokenFromUrl() {
+    const url = new URL(window.location.href)
+    url.searchParams.delete('inviteToken')
+    window.history.replaceState({}, '', url)
+    setInviteToken(null)
+    setInviteDetail(null)
+  }
+
+  async function acceptInvite() {
+    if (!inviteToken) {
+      return
+    }
+    setLoading(true)
+    try {
+      await api(`/api/workspaces/invitations/${inviteToken}/accept`, { method: 'POST' })
+      setStatus('초대를 수락했습니다. 워크스페이스가 전환되었습니다.')
+      clearInviteTokenFromUrl()
+      await loadMe()
+    } catch (error) {
+      setStatus(error.message)
+    } finally {
+      setLoading(false)
+    }
+  }
+
   function loginWithGoogle() {
-    window.location.href = `${BACKEND_URL}/oauth2/authorization/google`
+    const query = inviteToken ? `?inviteToken=${encodeURIComponent(inviteToken)}` : ''
+    window.location.href = `${BACKEND_URL}/oauth2/authorization/google${query}`
   }
 
   if (!me) {
@@ -323,6 +395,15 @@ function App() {
             Google로 시작하기
           </button>
         </header>
+
+        {inviteToken && (
+          <InviteBanner
+            inviteDetail={inviteDetail}
+            signedIn={false}
+            loading={loading}
+            onAcceptInvite={loginWithGoogle}
+          />
+        )}
 
         <section className="landing-hero">
           <p className="eyebrow">Wedding Planner Suite</p>
@@ -380,6 +461,16 @@ function App() {
           </a>
         </div>
       </header>
+
+      {inviteToken && (
+        <InviteBanner
+          inviteDetail={inviteDetail}
+          signedIn
+          loading={loading}
+          onAcceptInvite={acceptInvite}
+          onDismiss={clearInviteTokenFromUrl}
+        />
+      )}
 
       <section className="content">
 
@@ -724,8 +815,8 @@ function App() {
 
               {activeTab === 'agent' && (
               <Panel title="AI 추천 결과 상세">
-                {agentResult?.vendorRecommendation ? (
-                  <RecommendationResult recommendation={agentResult.vendorRecommendation} />
+                {latestAgentRecommendation ? (
+                  <RecommendationResult recommendation={latestAgentRecommendation} />
                 ) : (
                   <p className="empty">AI Agent 요청 결과에 추천 후보가 있으면 여기에 표시됩니다.</p>
                 )}
@@ -737,47 +828,42 @@ function App() {
             {activeTab === 'agent' && (
             <section className="tab-grid">
               <Panel title="AI Agent" id="agent">
-                <form
-                  className="stack-form"
-                  onSubmit={(event) =>
-                    submitForm(
-                      event,
-                      `/api/workspaces/${workspaceId}/agent`,
-                      (data, form) => ({
-                        message: data.get('message'),
-                        vendorCategory: data.get('vendorCategory'),
-                        areaKeyword: data.get('areaKeyword'),
-                        includeExternalSearch: form.includeExternalSearch.checked,
-                      }),
-                      (result) => setAgentResult(result),
-                    )
-                  }
-                >
-                  <textarea name="message" placeholder="예: 부케 업체가 갑자기 취소됐어. 대체 업체 찾아줘." required />
-                  <TwoColumns>
-                    <select name="vendorCategory" defaultValue="">
-                      <option value="">카테고리 선택 안 함</option>
-                      {categories.map((category) => (
-                        <option key={category} value={category}>
-                          {category}
-                        </option>
-                      ))}
-                    </select>
-                    <input name="areaKeyword" placeholder="지역 키워드" />
-                  </TwoColumns>
-                  <label className="check-row">
-                    <input name="includeExternalSearch" type="checkbox" />
-                    기존 업체가 부족하면 외부 업체도 검색
-                  </label>
+                <form className="stack-form" onSubmit={submitAgentMessage}>
+                  <textarea
+                    name="message"
+                    placeholder="예: 서영 커플에게 어울리는 업체 조합 추천해줘. / 부케 업체가 갑자기 취소됐어. 대체 업체 찾아줘."
+                    required
+                  />
                   <button type="submit" disabled={loading}>
                     AI에게 요청
                   </button>
                 </form>
-                {agentResult && (
-                  <div className="result-box">
-                    <strong>AI 응답</strong>
-                    <p>{agentResult.answer}</p>
-                  </div>
+                {agentHistory.length === 0 ? (
+                  <p className="empty">아직 AI Agent에게 요청한 내역이 없습니다.</p>
+                ) : (
+                  <ul className="agent-history">
+                    {agentHistory
+                      .slice()
+                      .reverse()
+                      .map((entry, index) => (
+                        <li key={agentHistory.length - index} className="agent-history__item">
+                          <p className="agent-history__question">{entry.message}</p>
+                          <p className="agent-history__answer">{entry.response.answer}</p>
+                          {entry.response.toolCalls?.length > 0 && (
+                            <details className="agent-history__tools">
+                              <summary>AI가 확인한 내용 ({entry.response.toolCalls.length}건)</summary>
+                              <ul>
+                                {entry.response.toolCalls.map((call, callIndex) => (
+                                  <li key={callIndex}>
+                                    <code>{call.tool}</code> {call.arguments}
+                                  </li>
+                                ))}
+                              </ul>
+                            </details>
+                          )}
+                        </li>
+                      ))}
+                  </ul>
                 )}
               </Panel>
 
@@ -915,6 +1001,46 @@ function GoogleIcon() {
       <path d="M3.964 10.71A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.71V4.958H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.042l3.007-2.332Z" fill="#FBBC05"/>
       <path d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.958L3.964 6.29C4.672 4.163 6.656 3.58 9 3.58Z" fill="#EA4335"/>
     </svg>
+  )
+}
+
+function roleLabel(role) {
+  if (role === 'OWNER') return '대표'
+  if (role === 'ADMIN') return '관리자'
+  return '멤버'
+}
+
+function InviteBanner({ inviteDetail, signedIn, loading, onAcceptInvite, onDismiss }) {
+  return (
+    <section className="invite-banner">
+      {!inviteDetail ? (
+        <p>초대 내용을 확인하는 중입니다…</p>
+      ) : inviteDetail.error ? (
+        <p>{inviteDetail.error}</p>
+      ) : (
+        <>
+          <div>
+            <strong>{inviteDetail.workspaceName} 워크스페이스 초대</strong>
+            <p>
+              {inviteDetail.invitedEmail} 계정으로 {roleLabel(inviteDetail.role)} 권한 초대가 도착했습니다.
+              {inviteDetail.status !== 'PENDING' && ' 이미 처리된 초대입니다.'}
+            </p>
+          </div>
+          <div className="invite-banner__actions">
+            {inviteDetail.status === 'PENDING' && (
+              <button type="button" onClick={onAcceptInvite} disabled={loading}>
+                {signedIn ? '초대 수락' : 'Google로 로그인하고 수락'}
+              </button>
+            )}
+            {onDismiss && (
+              <button type="button" className="secondary-button" onClick={onDismiss}>
+                닫기
+              </button>
+            )}
+          </div>
+        </>
+      )}
+    </section>
   )
 }
 

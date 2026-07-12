@@ -1042,7 +1042,7 @@ src/main/java/com/zerozero/marryit/MarryItApplication.java
 
 런타임 설정 및 리소스:
 
-```text
+```text 
 src/main/resources/
 ```
 
