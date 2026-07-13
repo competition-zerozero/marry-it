@@ -106,7 +106,8 @@ class VendorExperienceServiceTest {
                 new BigDecimal("127.0276100"),
                 "https://place.map.kakao.com/" + kakaoPlaceId,
                 true,
-                "김담당"
+                "김담당",
+                "급한 주문 대응 가능"
         ));
     }
 }
