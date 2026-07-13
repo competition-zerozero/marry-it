@@ -15,7 +15,7 @@ import org.springframework.security.oauth2.client.web.OAuth2AuthorizationRequest
 import org.springframework.security.web.SecurityFilterChain;
 
 @Configuration
-@Profile("!mcp")
+@Profile("!mcp & !mcp-stdio")
 public class SecurityConfig {
 
     @Bean
