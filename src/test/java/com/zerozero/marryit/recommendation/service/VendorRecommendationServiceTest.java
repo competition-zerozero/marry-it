@@ -56,7 +56,7 @@ class VendorRecommendationServiceTest {
         VendorRecommendationResponse response = vendorRecommendationService.recommend(
                 workspace.getId(),
                 planner.getId(),
-                new VendorRecommendationRequest(VendorCategory.FLOWER, "강남", true)
+                new VendorRecommendationRequest(VendorCategory.FLOWER, "강남", false)
         );
 
         assertThat(response.workspaceCandidates())
@@ -111,7 +111,8 @@ class VendorRecommendationServiceTest {
                 new BigDecimal("127.0276100"),
                 "https://place.map.kakao.com/" + kakaoPlaceId,
                 true,
-                "김담당"
+                "김담당",
+                "내추럴 스타일"
         ));
     }
 

@@ -106,7 +106,8 @@ class VendorServiceTest {
                         new BigDecimal("127.0000000"),
                         "https://place.map.kakao.com/place-1",
                         false,
-                        "박담당"
+                        "박담당",
+                        "수정 메모"
                 )
         );
         vendorService.delete(workspace.getId(), planner.getId(), created.id());
@@ -144,7 +145,8 @@ class VendorServiceTest {
                 new BigDecimal("127.0276100"),
                 "https://place.map.kakao.com/" + kakaoPlaceId,
                 true,
-                "김담당"
+                "김담당",
+                "내추럴 스타일"
         );
     }
 }

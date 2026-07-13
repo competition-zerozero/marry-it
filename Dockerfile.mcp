@@ -1,0 +1,40 @@
+# Marry-It MCP-only stdio server image.
+#
+# This image runs only the MCP stdio server, not the web backend or frontend.
+# Start it from an MCP client with stdin/stdout attached, for example:
+# docker run --rm -i --env-file .env -e MCP_WORKSPACE_ID=1 -e MCP_USER_ID=1 marry-it-mcp
+#
+# Available tools:
+# - get_customer_wedding_context
+# - find_replacement_vendor
+# - get_urgent_tasks
+# - search_available_vendors
+# - generate_customer_briefing
+
+# ---- Build stage ----
+FROM eclipse-temurin:21-jdk AS build
+WORKDIR /workspace
+
+COPY gradlew settings.gradle build.gradle ./
+COPY gradle gradle
+RUN chmod +x gradlew && ./gradlew --version
+
+COPY src src
+RUN ./gradlew bootJar --no-daemon -x test
+
+# ---- Runtime stage ----
+FROM eclipse-temurin:21-jre AS runtime
+WORKDIR /app
+
+LABEL org.opencontainers.image.title="marry-it-mcp"
+LABEL org.opencontainers.image.description="Marry-It backend with MCP-style AI Agent tools"
+
+ENV SPRING_PROFILES_ACTIVE=mcp
+ENV SPRING_MAIN_WEB_APPLICATION_TYPE=none
+ENV JAVA_OPTS=""
+
+RUN addgroup --system app && adduser --system --ingroup app app
+COPY --from=build /workspace/build/libs/*.jar app.jar
+USER app
+
+ENTRYPOINT ["sh", "-c", "java $JAVA_OPTS -jar /app/app.jar --spring.profiles.active=mcp"]
