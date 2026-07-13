@@ -1,8 +1,9 @@
-# Marry-It MCP-only stdio server image.
+# Marry-It MCP-only HTTP server image.
 #
-# This image runs only the MCP stdio server, not the web backend or frontend.
-# Start it from an MCP client with stdin/stdout attached, for example:
-# docker run --rm -i --env-file .env -e MCP_WORKSPACE_ID=1 -e MCP_USER_ID=1 marry-it-mcp
+# This image runs only the MCP HTTP server, not the frontend.
+# It listens on port 8000 and serves MCP JSON-RPC at /mcp.
+# Example:
+# docker run --rm -p 8000:8000 --env-file .env -e MCP_WORKSPACE_ID=1 -e MCP_USER_ID=1 marry-it-mcp
 #
 # Available tools:
 # - get_customer_wedding_context
@@ -30,11 +31,19 @@ LABEL org.opencontainers.image.title="marry-it-mcp"
 LABEL org.opencontainers.image.description="Marry-It backend with MCP-style AI Agent tools"
 
 ENV SPRING_PROFILES_ACTIVE=mcp
-ENV SPRING_MAIN_WEB_APPLICATION_TYPE=none
+ENV SPRING_MAIN_WEB_APPLICATION_TYPE=servlet
+ENV MCP_PORT=8000
 ENV JAVA_OPTS=""
 
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends curl \
+    && rm -rf /var/lib/apt/lists/*
 RUN addgroup --system app && adduser --system --ingroup app app
 COPY --from=build /workspace/build/libs/*.jar app.jar
 USER app
+
+EXPOSE 8000
+HEALTHCHECK --interval=30s --timeout=3s --start-period=20s --retries=3 \
+    CMD curl -fsS http://127.0.0.1:8000/health || exit 1
 
 ENTRYPOINT ["sh", "-c", "java $JAVA_OPTS -jar /app/app.jar --spring.profiles.active=mcp"]
