@@ -1,5 +1,7 @@
 package com.zerozero.marryit.auth.oauth;
 
+import com.zerozero.marryit.agent.mcp.McpOAuthController;
+import com.zerozero.marryit.agent.mcp.McpOAuthRequest;
 import com.zerozero.marryit.auth.service.OAuthLoginResult;
 import com.zerozero.marryit.auth.service.OAuthLoginService;
 import com.zerozero.marryit.auth.service.OAuthUserProfile;
@@ -24,15 +26,18 @@ public class OAuth2LoginSuccessHandler extends SimpleUrlAuthenticationSuccessHan
 
     private final OAuthLoginService oauthLoginService;
     private final GoogleOAuthUserProfileMapper googleOAuthUserProfileMapper;
+    private final McpOAuthController mcpOAuthController;
     private final String frontendUrl;
 
     public OAuth2LoginSuccessHandler(
             OAuthLoginService oauthLoginService,
             GoogleOAuthUserProfileMapper googleOAuthUserProfileMapper,
+            org.springframework.beans.factory.ObjectProvider<McpOAuthController> mcpOAuthController,
             @Value("${app.frontend-url:/}") String frontendUrl
     ) {
         this.oauthLoginService = oauthLoginService;
         this.googleOAuthUserProfileMapper = googleOAuthUserProfileMapper;
+        this.mcpOAuthController = mcpOAuthController.getIfAvailable();
         this.frontendUrl = frontendUrl;
         setDefaultTargetUrl(frontendUrl);
     }
@@ -49,6 +54,13 @@ public class OAuth2LoginSuccessHandler extends SimpleUrlAuthenticationSuccessHan
         HttpSession session = request.getSession(true);
         session.setAttribute(SESSION_USER_ID, loginResult.user().getId());
         session.setAttribute(SESSION_WORKSPACE_ID, loginResult.defaultWorkspace().getId());
+
+        Object pendingMcpOAuthRequest = session.getAttribute(McpOAuthController.SESSION_PENDING_MCP_OAUTH_REQUEST);
+        if (pendingMcpOAuthRequest instanceof McpOAuthRequest mcpOAuthRequest && mcpOAuthController != null) {
+            session.removeAttribute(McpOAuthController.SESSION_PENDING_MCP_OAUTH_REQUEST);
+            mcpOAuthController.completePendingAuthorization(response, loginResult.user().getId(), mcpOAuthRequest);
+            return;
+        }
 
         Object pendingInviteToken = session.getAttribute(InviteTokenCaptureFilter.SESSION_PENDING_INVITE_TOKEN);
         if (pendingInviteToken instanceof String inviteToken && !inviteToken.isBlank()) {

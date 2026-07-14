@@ -15,9 +15,17 @@ import org.springframework.web.filter.OncePerRequestFilter;
 public class McpAuthenticationFilter extends OncePerRequestFilter {
 
     private final String apiKey;
+    private final String issuer;
+    private final McpOAuthService mcpOAuthService;
 
-    public McpAuthenticationFilter(@Value("${mcp.api-key:}") String apiKey) {
+    public McpAuthenticationFilter(
+            @Value("${mcp.api-key:}") String apiKey,
+            @Value("${mcp.issuer:http://localhost:8000}") String issuer,
+            McpOAuthService mcpOAuthService
+    ) {
         this.apiKey = apiKey;
+        this.issuer = issuer.endsWith("/") ? issuer.substring(0, issuer.length() - 1) : issuer;
+        this.mcpOAuthService = mcpOAuthService;
     }
 
     @Override
@@ -26,20 +34,28 @@ public class McpAuthenticationFilter extends OncePerRequestFilter {
             HttpServletResponse response,
             FilterChain filterChain
     ) throws ServletException, IOException {
-        if (!requiresMcpAuthentication(request) || apiKey == null || apiKey.isBlank()) {
+        if (!requiresMcpAuthentication(request)) {
             filterChain.doFilter(request, response);
             return;
         }
 
         String headerKey = request.getHeader("X-MCP-API-Key");
         String bearerToken = bearerToken(request.getHeader("Authorization"));
-        if (apiKey.equals(headerKey) || apiKey.equals(bearerToken)) {
+        if (apiKey != null && !apiKey.isBlank() && (apiKey.equals(headerKey) || apiKey.equals(bearerToken))) {
+            filterChain.doFilter(request, response);
+            return;
+        }
+        if (isValidOAuthToken(bearerToken)) {
             filterChain.doFilter(request, response);
             return;
         }
 
         response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
         response.setContentType("application/json");
+        response.setHeader(
+                "WWW-Authenticate",
+                "Bearer resource_metadata=\"" + issuer + "/.well-known/oauth-protected-resource\""
+        );
         response.getWriter().write("{\"error\":\"Unauthorized MCP request\"}");
     }
 
@@ -52,5 +68,14 @@ public class McpAuthenticationFilter extends OncePerRequestFilter {
             return null;
         }
         return authorization.substring("Bearer ".length());
+    }
+
+    private boolean isValidOAuthToken(String bearerToken) {
+        try {
+            mcpOAuthService.resolveContext(bearerToken);
+            return true;
+        } catch (Exception exception) {
+            return false;
+        }
     }
 }
