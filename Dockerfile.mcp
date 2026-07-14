@@ -3,7 +3,14 @@
 # This image runs only the MCP HTTP server, not the frontend.
 # It listens on port 8000 and serves MCP JSON-RPC at /mcp.
 # Example:
-# docker run --rm -p 8000:8000 --env-file .env -e MCP_WORKSPACE_ID=1 -e MCP_USER_ID=1 marry-it-mcp
+# docker run --rm -p 8000:8000 --env-file .env -e MCP_ISSUER=https://mcp.example.com marry-it-mcp
+#
+# Required for OAuth login:
+# - GOOGLE_CLIENT_ID
+# - GOOGLE_CLIENT_SECRET
+# - DB_URL
+# - DB_USERNAME
+# - DB_PASSWORD
 #
 # Available tools:
 # - get_customer_wedding_context

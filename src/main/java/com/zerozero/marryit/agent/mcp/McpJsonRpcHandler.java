@@ -10,7 +10,6 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import tools.jackson.databind.ObjectMapper;
 
@@ -22,25 +21,19 @@ public class McpJsonRpcHandler {
     private final AgentToolRegistry toolRegistry;
     private final McpToolCatalog toolCatalog;
     private final ObjectMapper objectMapper;
-    private final Long workspaceId;
-    private final Long userId;
 
     public McpJsonRpcHandler(
             AgentToolRegistry toolRegistry,
             McpToolCatalog toolCatalog,
-            ObjectMapper objectMapper,
-            @Value("${mcp.workspace-id:0}") Long workspaceId,
-            @Value("${mcp.user-id:0}") Long userId
+            ObjectMapper objectMapper
     ) {
         this.toolRegistry = toolRegistry;
         this.toolCatalog = toolCatalog;
         this.objectMapper = objectMapper;
-        this.workspaceId = workspaceId;
-        this.userId = userId;
     }
 
     @SuppressWarnings("unchecked")
-    public Map<String, Object> handle(Map<String, Object> request) {
+    public Map<String, Object> handle(Map<String, Object> request, AgentToolContext context) {
         Object id = request.get("id");
         String method = request.get("method") == null ? null : request.get("method").toString();
         if (id == null && method != null && method.startsWith("notifications/")) {
@@ -51,7 +44,7 @@ public class McpJsonRpcHandler {
             Object result = switch (method) {
                 case "initialize" -> initializeResult();
                 case "tools/list" -> toolsListResult();
-                case "tools/call" -> toolsCallResult((Map<String, Object>) request.getOrDefault("params", Map.of()));
+                case "tools/call" -> toolsCallResult((Map<String, Object>) request.getOrDefault("params", Map.of()), context);
                 default -> throw new McpException(-32601, "Method not found: " + method);
             };
             return response(id, result);
@@ -94,9 +87,7 @@ public class McpJsonRpcHandler {
     }
 
     @SuppressWarnings("unchecked")
-    private Map<String, Object> toolsCallResult(Map<String, Object> params) {
-        assertContextConfigured();
-
+    private Map<String, Object> toolsCallResult(Map<String, Object> params, AgentToolContext context) {
         String name = params.get("name") == null ? null : params.get("name").toString();
         if (name == null || name.isBlank()) {
             throw new McpException(-32602, "Missing tool name");
@@ -108,7 +99,10 @@ public class McpJsonRpcHandler {
                 ? (Map<String, Object>) map
                 : Map.of();
 
-        Object toolResult = toolRegistry.execute(name, arguments, new AgentToolContext(workspaceId, userId));
+        if (context == null) {
+            throw new McpException(-32001, "MCP OAuth login is required.");
+        }
+        Object toolResult = toolRegistry.execute(name, arguments, context);
         return Map.of(
                 "content", List.of(Map.of(
                         "type", "text",
@@ -131,15 +125,6 @@ public class McpJsonRpcHandler {
         definition.put("inputSchema", tool.parametersSchema());
         definition.put("annotations", toolCatalog.annotations(tool.name()));
         return definition;
-    }
-
-    private void assertContextConfigured() {
-        if (workspaceId == null || workspaceId <= 0 || userId == null || userId <= 0) {
-            throw new McpException(
-                    -32000,
-                    "MCP_WORKSPACE_ID and MCP_USER_ID must be set to execute Marry-It tools."
-            );
-        }
     }
 
     private Map<String, Object> response(Object id, Object result) {

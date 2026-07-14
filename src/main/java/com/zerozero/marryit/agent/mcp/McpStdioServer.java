@@ -50,7 +50,7 @@ public class McpStdioServer implements CommandLineRunner {
             return;
         }
 
-        Map<String, Object> response = jsonRpcHandler.handle(request);
+        Map<String, Object> response = jsonRpcHandler.handle(request, null);
         if (response != null) {
             write(writer, response);
         }
